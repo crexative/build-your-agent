@@ -30,14 +30,15 @@
 ## Inicio Rápido
 
 ```bash
-# Clona el repositorio
-git clone https://github.com/TU_USUARIO/build-your-agent.git
+curl -fsSL https://raw.githubusercontent.com/crexative/build-your-agent/main/install.sh | bash
+```
+
+O clona y ejecuta manualmente:
+
+```bash
+git clone https://github.com/crexative/build-your-agent.git
 cd build-your-agent
-
-# Dale permisos de ejecución al script
 chmod +x create-agent.sh
-
-# Ejecuta la guía interactiva
 ./create-agent.sh
 ```
 
