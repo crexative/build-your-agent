@@ -58,4 +58,4 @@ Help the user stay organized and productive by handling information management t
 
 ---
 
-*Example agent from [Build Your Agent](https://github.com/YOUR_USERNAME/build-your-agent)*
+*Example agent from [Build Your Agent](https://github.com/crexative/build-your-agent)*

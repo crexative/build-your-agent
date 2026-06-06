@@ -69,4 +69,4 @@ Gemini CLI, Codex, Aider, and Devin.
 
 ---
 
-*Based on the [Build Your Agent](https://github.com/YOUR_USERNAME/build-your-agent) base template.*
+*Based on the [Build Your Agent](https://github.com/crexative/build-your-agent) base template.*

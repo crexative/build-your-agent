@@ -18,7 +18,7 @@ Thank you for your interest in contributing! This project welcomes contributions
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/build-your-agent.git
+   git clone https://github.com/crexative/build-your-agent.git
    cd build-your-agent
    ```
 3. Create a branch for your change:

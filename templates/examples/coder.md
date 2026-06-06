@@ -90,4 +90,4 @@ Help developers write better code faster by assisting with implementation, code 
 
 ---
 
-*Example agent from [Build Your Agent](https://github.com/YOUR_USERNAME/build-your-agent)*
+*Example agent from [Build Your Agent](https://github.com/crexative/build-your-agent)*

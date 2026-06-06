@@ -31,7 +31,7 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/build-your-agent.git
+git clone https://github.com/crexative/build-your-agent.git
 cd build-your-agent
 
 # Make the script executable

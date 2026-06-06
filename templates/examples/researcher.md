@@ -80,4 +80,4 @@ Produce accurate, well-sourced research reports on any topic by searching the we
 
 ---
 
-*Example agent from [Build Your Agent](https://github.com/YOUR_USERNAME/build-your-agent)*
+*Example agent from [Build Your Agent](https://github.com/crexative/build-your-agent)*

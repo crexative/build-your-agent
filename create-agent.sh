@@ -1096,7 +1096,7 @@ Make sure the corresponding MCP servers are configured in your environment."
     echo ""
     echo "---"
     echo ""
-    echo "*Generated with [Build Your Agent](https://github.com/YOUR_USERNAME/build-your-agent)*"
+    echo "*Generated with [Build Your Agent](https://github.com/crexative/build-your-agent)*"
 
   } > "$output_path"
 
