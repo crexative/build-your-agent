@@ -404,8 +404,8 @@ discover_skills() {
     if [[ "$line" =~ ^[a-zA-Z] ]] && [[ "$line" == *@* ]] && [[ "$line" == *installs* ]]; then
       skill_refs+=("${line%%[[:space:]]*}|$(echo "$line" | grep -oE '[0-9.]+K?[[:space:]]+installs')")
     elif [[ "$line" == *https://skills.sh/* ]]; then
-      skill_urls+=("${line#*https://}")
-      skill_urls[-1]="https://${skill_urls[-1]}"
+      local _url="${line#*https://}"
+      skill_urls+=("https://${_url}")
     fi
   done <<< "$raw"
 
