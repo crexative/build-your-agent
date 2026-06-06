@@ -18,7 +18,8 @@ Type "1"
 Enter
 Sleep 2s
 
-# ── Step 1: Agent name ────────────────────────────────────────────────────────
+# ── Step 1: Identity ──────────────────────────────────────────────────────────
+# Agent name
 Type "code-reviewer"
 Enter
 Sleep 800ms
@@ -38,17 +39,16 @@ Type "3"
 Enter
 Sleep 1200ms
 
-# ── Step 2: Model → sonnet ────────────────────────────────────────────────────
-Type "1"
-Enter
-Sleep 1200ms
-
-# ── Step 3: Platform → Claude Code ───────────────────────────────────────────
+# ── Step 2: Platform → Claude Code ───────────────────────────────────────────
 Type "1"
 Enter
 Sleep 1s
 
-# Color → purple
+# ── Step 3: Model → Sonnet, Color → purple ───────────────────────────────────
+Type "1"
+Enter
+Sleep 800ms
+
 Type "6"
 Enter
 Sleep 1200ms
@@ -58,30 +58,28 @@ Type "1 3 6"
 Enter
 Sleep 800ms
 
-# MCP → No
+# MCP → No (Enter = default N)
 Enter
 Sleep 1200ms
 
-# ── Step 5: Behavior ─────────────────────────────────────────────────────────
+# ── Step 5: Behavior + Constraints ───────────────────────────────────────────
 Type "meticulous and detail-oriented"
 Enter
 Sleep 800ms
 
-# Constraints
 Type "Auto-approve changes without explicit user confirmation"
 Enter
 Sleep 1200ms
 
-# ── Step 6: Output filename ───────────────────────────────────────────────────
-Type "code-reviewer"
+# ── Step 6: Filename → use default (Enter) ───────────────────────────────────
 Enter
 Sleep 800ms
 
-# Auto-place → Yes
-Type "y"
+# Where to install → 1 (Global)
+Type "1"
 Enter
 Sleep 2s
 
-# Install → No
+# Install platform script → No (Enter = default N)
 Enter
 Sleep 3s
