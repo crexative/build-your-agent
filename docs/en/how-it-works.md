@@ -6,28 +6,43 @@ This page explains the technical flow behind `create-agent.sh` and how the gener
 
 ## The Create-Agent Flow
 
-When you run `./create-agent.sh`, it walks you through five steps:
+When you run `./create-agent.sh`, it walks you through six steps:
 
 ```
-Step 1: Choose your language (English / Spanish)
+Step 0: Choose your language (English / Spanish)
    ↓
-Step 2: Define your agent
-        • Name
-        • Description
-        • Objective
-        • Tools it can use
-        • Behavior guidelines
-        • Constraints
+Step 1: Agent Identity
+        • Name (kebab-case)
+        • Description (frontmatter field — used to invoke the agent)
+        • Main objective
+        • Role type: Orchestrator / Worker / Specialist / General
    ↓
-Step 3: Choose your target platform
+Step 2: Model Selection
+        • sonnet — coding & general tasks (recommended)
+        • opus   — deep reasoning, orchestration
+        • haiku  — lightweight, high-volume tasks
+   ↓
+Step 3: Target Platform
         (Claude Code, Cursor, Devin, Windsurf, Gemini CLI, Codex, Aider)
+        + Color picker for Claude Code icon
    ↓
-Step 4: Generate a ready-to-use .md agent file
+Step 4: Agent Tools
+        • Claude Code: official tool names (Read, Write, Bash, WebSearch…)
+        • Other platforms: generic tool categories
+        + Optional: MCP external tools
    ↓
-Step 5: Optionally run the platform install script
+Step 5: Behavior & Constraints
+        • Behavior style
+        • Hard constraints (what it must never do)
+   ↓
+Step 6: Output File
+        • Output filename
+        • Auto-place in .claude/agents/ (Claude Code only)
+   ↓
+   Generate → Optionally run install script
 ```
 
-The output is a single Markdown file that contains a structured system prompt — essentially, instructions for the AI about who it is and how to behave.
+The output is a Markdown file with official YAML frontmatter that Claude Code reads natively, plus a structured system prompt that defines the agent's role, process, behavior, and output format.
 
 ---
 
@@ -124,36 +139,63 @@ system-prompt: my-agent.md
 
 ## The Agent Markdown Format
 
+### Claude Code (official spec)
+
+For Claude Code, the script generates the official agent format used by all production agents:
+
 ```markdown
 ---
 name: my-agent
-platform: Claude Code
-language: en
-created: 2025-01-01
+description: Expert in X. Use PROACTIVELY when you need to...
+model: sonnet
+tools: ["Read", "Write", "Bash"]
+color: blue
 ---
 
-# Agent: my-agent
+You are my-agent, an expert in X.
 
-## Description
-...
+## Your Role
+
+- What this agent does (bullet list)
 
 ## Objective
-...
 
-## Available Tools
-...
+What it's trying to achieve.
+
+## Process
+
+When given a task:
+1. Step one
+2. Step two
 
 ## Behavior
-...
+
+- How it should act
 
 ## Constraints
-...
+
+- What it must never do
 
 ## Output Format
-...
+
+- How to structure responses
 ```
 
-The frontmatter (`---` block) is optional metadata. The headings are what the AI model actually reads.
+The **frontmatter** is read by Claude Code to register the agent and configure its model and tools. The **body** is the system prompt — what the AI actually reads and follows.
+
+### Other Platforms
+
+For Cursor, Windsurf, Gemini CLI, Codex, and Aider, the script generates a generic Markdown system prompt with a `Platform Instructions` section at the end.
+
+### Key frontmatter fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Kebab-case agent identifier |
+| `description` | Yes | What it does + when to invoke it |
+| `model` | No | `sonnet` \| `opus` \| `haiku` |
+| `tools` | No | JSON array of allowed tools |
+| `color` | No | Icon color in Claude Code UI |
 
 ---
 
