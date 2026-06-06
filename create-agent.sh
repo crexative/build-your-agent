@@ -534,8 +534,8 @@ get_platform_note() {
   case "$agent_platform" in
     "Claude Code")
       [[ "$LANG_CODE" == "es" ]] \
-        && echo "Guarda como \`.claude/agents/${output_filename}.md\`. Actívalo con \`/${output_filename}\` en Claude Code." \
-        || echo "Save as \`.claude/agents/${output_filename}.md\`. Activate with \`/${output_filename}\` in Claude Code." ;;
+        && echo "Guarda como \`.claude/agents/${output_filename}.md\`. Pide en Claude Code: 'Usa el agente ${output_filename} para [tu tarea]'." \
+        || echo "Save as \`.claude/agents/${output_filename}.md\`. Ask in Claude Code: 'Use the ${output_filename} agent for [your task]'." ;;
     "Cursor")
       [[ "$LANG_CODE" == "es" ]] \
         && echo "Guarda en \`.cursor/rules/${output_filename}.md\` o referéncialo en \`.cursorrules\`." \
@@ -1273,6 +1273,39 @@ get_activation_step() {
   esac
 }
 
+get_verify_step() {
+  case "$agent_platform" in
+    "Claude Code")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica tu agente: escribe \`/agents\` en Claude Code → tab 'Library'" \
+        || echo "5. Verify your agent: type \`/agents\` in Claude Code → 'Library' tab" ;;
+    "Cursor")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica: el agente se aplica automáticamente — observa si Cursor sigue tus reglas" \
+        || echo "5. Verify: the agent applies automatically — check if Cursor follows your rules" ;;
+    "Devin")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica tu playbook en: app.devin.ai/playbooks — aparece una pastilla azul al iniciar sesión" \
+        || echo "5. Verify your playbook at: app.devin.ai/playbooks — a blue pill appears when starting a session" ;;
+    "Windsurf")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica: las reglas se aplican automáticamente — observa si Cascade sigue tus instrucciones" \
+        || echo "5. Verify: rules apply automatically — check if Cascade follows your instructions" ;;
+    "Gemini CLI")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica tu agente: escribe \`/agents list\` en una sesión de Gemini CLI" \
+        || echo "5. Verify your agent: type \`/agents list\` in a Gemini CLI session" ;;
+    "OpenAI Codex")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica tu agente: ejecuta \`codex plugin list --json\` en la terminal" \
+        || echo "5. Verify your agent: run \`codex plugin list --json\` in the terminal" ;;
+    "Aider")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "5. Verifica el prompt cargado: ejecuta \`aider --show-prompts\` en la terminal" \
+        || echo "5. Verify the loaded prompt: run \`aider --show-prompts\` in the terminal" ;;
+  esac
+}
+
 show_summary() {
   echo ""
   echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
@@ -1281,6 +1314,7 @@ show_summary() {
   echo -e "  ${MSG_STEP2}"
   [[ "$auto_place" == true ]] && echo -e "  ${MSG_STEP3_DONE}" || echo -e "  ${MSG_STEP3}"
   echo -e "  $(get_activation_step)"
+  echo -e "  $(get_verify_step)"
   echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
   echo ""
   echo -e "  ${DIM}${MSG_RUN_AGAIN}${RESET}"

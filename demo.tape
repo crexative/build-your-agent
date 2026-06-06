@@ -82,4 +82,4 @@ Sleep 2s
 
 # Install platform script → No (Enter = default N)
 Enter
-Sleep 3s
+Sleep 5s
