@@ -1233,12 +1233,12 @@ get_activation_step() {
     "Claude Code")
       if [[ "$auto_place_global" == true ]]; then
         [[ "$LANG_CODE" == "es" ]] \
-          && echo "4. Escribe \`/${output_filename}\` en cualquier proyecto de Claude Code" \
-          || echo "4. Type \`/${output_filename}\` in any Claude Code project"
+          && echo "4. En Claude Code pide: 'Usa el agente ${output_filename} para [tu tarea]'" \
+          || echo "4. In Claude Code ask: 'Use the ${output_filename} agent for [your task]'"
       else
         [[ "$LANG_CODE" == "es" ]] \
-          && echo "4. Escribe \`/${output_filename}\` en Claude Code (en este directorio)" \
-          || echo "4. Type \`/${output_filename}\` in Claude Code (in this directory)"
+          && echo "4. En Claude Code (en este directorio) pide: 'Usa el agente ${output_filename}'" \
+          || echo "4. In Claude Code (this directory) ask: 'Use the ${output_filename} agent'"
       fi ;;
     "Cursor")
       [[ "$LANG_CODE" == "es" ]] \
