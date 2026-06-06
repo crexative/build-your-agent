@@ -27,6 +27,8 @@
 
 ---
 
+![Build Your Agent demo](docs/demo.gif)
+
 ## Quick Start
 
 ```bash

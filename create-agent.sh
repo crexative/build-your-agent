@@ -380,6 +380,7 @@ extract_keywords() {
 }
 
 discover_skills() {
+  [[ "${BYA_DEMO:-}" == "1" ]] && return 0
   command -v npx &>/dev/null || return 0
 
   local keywords
