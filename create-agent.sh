@@ -226,6 +226,22 @@ load_strings() {
     MSG_SKILLS_STEP="Descubrimiento de Skills"
     MSG_SKILLS_REF_TITLE="## Skills de Referencia"
     MSG_SKILLS_REF_BODY="Este agente está enriquecido por la siguiente skill instalada. Invócala cuando necesites referencia especializada del dominio."
+    # Cursor
+    MSG_CURSOR_STEP="Configuración Nativa de Cursor"
+    MSG_CURSOR_ALWAYS="¿Aplicar siempre en todo contexto? (alwaysApply)"
+    MSG_CURSOR_ALWAYS_TIP="'Sí' = incluida siempre. 'No' = AI decide según descripción."
+    MSG_CURSOR_GLOBS="Patrones de archivos que activan esta regla (ej: **/*.ts, **/*.py):"
+    MSG_CURSOR_GLOBS_TIP="Deja vacío para que aplique a todos los archivos."
+    # Devin
+    MSG_DEVIN_STEP="Formato de Devin"
+    MSG_DEVIN_FORMAT="¿Qué formato generar para Devin?"
+    MSG_DEVIN_SYSPROMPT="System Prompt|Texto limpio para pegar en el campo de instrucciones de Devin"
+    MSG_DEVIN_PLAYBOOK="Playbook|Archivo .devin/playbooks/ con pasos estructurados y trigger"
+    MSG_DEVIN_TRIGGER="¿Cuándo debe activarse este playbook? (ej: al revisar código, al hacer deploy):"
+    # Codex
+    MSG_CODEX_STEP="Configuración Nativa de Codex"
+    MSG_CODEX_AGENTS="¿Nombrar el archivo AGENTS.md? (Codex lo detecta automáticamente)"
+    MSG_CODEX_AGENTS_TIP="Codex lee AGENTS.md del proyecto automáticamente, sin flags extra."
   else
     MSG_WELCOME="Let's create your AI agent following the official Claude Code agent specification."
     MSG_STEP_IDENTITY="Agent Identity"
@@ -278,6 +294,22 @@ load_strings() {
     MSG_SKILLS_STEP="Skill Discovery"
     MSG_SKILLS_REF_TITLE="## Reference Skills"
     MSG_SKILLS_REF_BODY="This agent is enriched by the following installed skill. Invoke it when you need specialized domain reference."
+    # Cursor
+    MSG_CURSOR_STEP="Cursor Native Configuration"
+    MSG_CURSOR_ALWAYS="Apply to all contexts always? (alwaysApply)"
+    MSG_CURSOR_ALWAYS_TIP="'Yes' = always injected. 'No' = AI decides based on description."
+    MSG_CURSOR_GLOBS="File patterns that trigger this rule (e.g. **/*.ts, **/*.py):"
+    MSG_CURSOR_GLOBS_TIP="Leave empty to apply to all files."
+    # Devin
+    MSG_DEVIN_STEP="Devin Format"
+    MSG_DEVIN_FORMAT="Which Devin format to generate?"
+    MSG_DEVIN_SYSPROMPT="System Prompt|Clean text to paste in Devin's instruction field"
+    MSG_DEVIN_PLAYBOOK="Playbook|.devin/playbooks/ file with structured steps and trigger"
+    MSG_DEVIN_TRIGGER="When should this playbook activate? (e.g. when reviewing code, when deploying):"
+    # Codex
+    MSG_CODEX_STEP="Codex Native Configuration"
+    MSG_CODEX_AGENTS="Name the file AGENTS.md? (Codex auto-detects it)"
+    MSG_CODEX_AGENTS_TIP="Codex reads AGENTS.md from the project root automatically, no flags needed."
   fi
 }
 
@@ -432,13 +464,57 @@ get_platform_note() {
         && echo "Usa: \`gemini --context ${output_filename}.md\` o coloca en \`~/.gemini/agents/${output_filename}.md\`." \
         || echo "Use: \`gemini --context ${output_filename}.md\` or place in \`~/.gemini/agents/${output_filename}.md\`." ;;
     "OpenAI Codex")
-      [[ "$LANG_CODE" == "es" ]] \
-        && echo "Usa: \`codex --system-prompt ${output_filename}.md\`" \
-        || echo "Use: \`codex --system-prompt ${output_filename}.md\`" ;;
+      if [[ "$codex_agents_md" == true ]]; then
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "Archivo generado como \`AGENTS.md\`. Codex lo detecta automáticamente en el root del proyecto." \
+          || echo "File generated as \`AGENTS.md\`. Codex detects it automatically in the project root."
+      else
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "Usa: \`codex --system-prompt ${output_filename}.md\`" \
+          || echo "Use: \`codex --system-prompt ${output_filename}.md\`"
+      fi ;;
     "Aider")
       [[ "$LANG_CODE" == "es" ]] \
         && echo "Usa: \`aider --system-prompt ${output_filename}.md\` o configura en \`.aider.conf.yml\`." \
         || echo "Use: \`aider --system-prompt ${output_filename}.md\` or configure in \`.aider.conf.yml\`." ;;
+  esac
+}
+
+# ─── Platform-Specific Config ──────────────────────────────────────────────────
+gather_platform_config() {
+  local devin_format_choice=""
+  case "$agent_platform" in
+    "Cursor")
+      print_step "3b" "$MSG_CURSOR_STEP"
+      echo ""
+      print_info "$MSG_CURSOR_ALWAYS_TIP"
+      if confirm "$MSG_CURSOR_ALWAYS"; then
+        cursor_always_apply=true
+      fi
+      echo ""
+      print_info "$MSG_CURSOR_GLOBS_TIP"
+      ask cursor_globs "$MSG_CURSOR_GLOBS"
+      ;;
+    "Devin")
+      print_step "3b" "$MSG_DEVIN_STEP"
+      echo ""
+      ask_choice_with_desc devin_format_choice "$MSG_DEVIN_FORMAT" \
+        "$MSG_DEVIN_SYSPROMPT" \
+        "$MSG_DEVIN_PLAYBOOK"
+      if [[ "$devin_format_choice" == "Playbook" ]]; then
+        devin_playbook=true
+        echo ""
+        ask devin_trigger "$MSG_DEVIN_TRIGGER"
+      fi
+      ;;
+    "OpenAI Codex")
+      print_step "3b" "$MSG_CODEX_STEP"
+      echo ""
+      print_info "$MSG_CODEX_AGENTS_TIP"
+      if confirm "$MSG_CODEX_AGENTS"; then
+        codex_agents_md=true
+      fi
+      ;;
   esac
 }
 
@@ -447,7 +523,16 @@ generate_agent_file() {
   get_role_defaults "$agent_role"
 
   local output_path
-  if [[ "$auto_place" == true ]]; then
+  if [[ "$agent_platform" == "OpenAI Codex" ]] && [[ "$codex_agents_md" == true ]]; then
+    output_path="AGENTS.md"
+  elif [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]]; then
+    if [[ "$auto_place" == true ]]; then
+      mkdir -p ".devin/playbooks"
+      output_path=".devin/playbooks/${output_filename}.md"
+    else
+      output_path="${output_filename}.md"
+    fi
+  elif [[ "$auto_place" == true ]]; then
     mkdir -p ".claude/agents"
     output_path=".claude/agents/${output_filename}.md"
   else
@@ -490,15 +575,17 @@ Make sure the corresponding MCP servers are configured in your environment."
 
   # ── Write the file ─────────────────────────────────────────────────────────
   {
-    # Frontmatter (official Claude Code format)
-    echo "---"
-    echo "name: ${agent_name}"
-    echo "description: ${agent_description}"
-    echo "model: ${agent_model}"
-    [[ -n "$tools_json" ]]  && echo "tools: ${tools_json}"
-    [[ -n "$agent_color" ]] && echo "color: ${agent_color}"
-    echo "---"
-    echo ""
+    if [[ "$agent_platform" == "Claude Code" ]]; then
+      # Frontmatter (official Claude Code format)
+      echo "---"
+      echo "name: ${agent_name}"
+      echo "description: ${agent_description}"
+      echo "model: ${agent_model}"
+      [[ -n "$tools_json" ]]  && echo "tools: ${tools_json}"
+      [[ -n "$agent_color" ]] && echo "color: ${agent_color}"
+      echo "---"
+      echo ""
+    fi
 
     if [[ "$LANG_CODE" == "es" ]]; then
 
@@ -546,62 +633,205 @@ Make sure the corresponding MCP servers are configured in your environment."
 
       else
         # ── Other platforms / Spanish ──────────────────────────────────────────
-        local today platform_note
-        today=$(date +%Y-%m-%d 2>/dev/null || echo "unknown")
-        platform_note=$(get_platform_note)
-
-        echo "# Agente: ${agent_name}"
-        echo ""
-        echo "## Descripción"
-        echo ""
-        echo "${agent_description}"
-        echo ""
-        echo "## Objetivo"
-        echo ""
-        echo "${agent_objective}"
-        echo ""
-        echo "## Herramientas Disponibles"
-        echo ""
-        echo "${agent_tools:-N/A}"
-        echo ""
-        echo "## Tu Rol"
-        echo ""
-        echo "$role_caps"
-        echo ""
-        echo "## Proceso"
-        echo ""
-        echo "$role_proc"
-        echo ""
-        echo "## Comportamiento"
-        echo ""
-        echo "- ${agent_behavior}"
-        echo "- Pide confirmación antes de acciones irreversibles"
-        echo "- Sé conciso y directo"
-        echo "- Prefiere pasos incrementales y verificables"
-        echo "- Opera de forma segura y reversible por defecto"
-        echo ""
-        echo "## Restricciones"
-        echo ""
-        echo "- ${agent_constraints}"
-        echo "- NO almacenes ni transmitas datos sensibles"
-        echo "- NO ejecutes comandos destructivos sin confirmación"
-        echo "- NO accedas a archivos fuera del directorio de trabajo"
-        echo ""
-        echo "## Formato de Salida"
-        echo ""
-        echo "$role_out"
-        if [[ -n "$mcp_section" ]]; then
-          echo ""
-          echo "$mcp_section"
-        fi
-        echo ""
-        echo "## Instrucciones de Plataforma"
-        echo ""
-        echo "**${agent_platform}**: ${platform_note}"
-        echo ""
-        echo "---"
-        echo ""
-        echo "> Modelo: ${agent_model} | Plataforma: ${agent_platform} | Creado: ${today}"
+        local desc_clean_es="${agent_description%[.!?]}"
+        case "$agent_platform" in
+          "Cursor")
+            echo "---"
+            echo "description: ${agent_description}"
+            [[ "$cursor_always_apply" == true ]] && echo "alwaysApply: true" || echo "alwaysApply: false"
+            if [[ -n "$cursor_globs" ]]; then
+              echo "globs: [\"${cursor_globs//,/\", \"}\"]"
+            fi
+            echo "---"
+            echo ""
+            echo "Eres ${agent_name}, ${desc_clean_es}."
+            echo ""
+            echo "## Tu Rol"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## Objetivo"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Proceso"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Comportamiento"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Pide confirmación antes de cualquier acción irreversible"
+            echo "- Sé conciso y directo"
+            echo "- Prefiere pasos incrementales y verificables"
+            echo "- Opera de forma segura y reversible por defecto"
+            echo ""
+            echo "## Restricciones"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- NO almacenes ni transmitas datos sensibles"
+            echo "- NO ejecutes comandos destructivos sin confirmación"
+            echo ""
+            echo "## Formato de Salida"
+            echo ""
+            echo "$role_out"
+            ;;
+          "OpenAI Codex")
+            echo "# Instrucciones del Agente — ${agent_name}"
+            echo ""
+            echo "Eres ${agent_name}, ${desc_clean_es}."
+            echo ""
+            echo "## Objetivo"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Capacidades"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## Cómo Trabajar"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Comportamiento"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Pide confirmación antes de acciones irreversibles"
+            echo "- Sé conciso — sin relleno"
+            echo "- Opera de forma segura y reversible por defecto"
+            echo ""
+            echo "## Restricciones Duras"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- Nunca almacenes ni transmitas datos sensibles"
+            echo "- Nunca ejecutes comandos destructivos sin confirmación"
+            echo ""
+            echo "## Formato de Salida"
+            echo ""
+            echo "$role_out"
+            ;;
+          "Devin")
+            if [[ "$devin_playbook" == true ]]; then
+              echo "# Playbook: ${agent_name}"
+              echo ""
+              echo "## Cuándo Usar"
+              echo ""
+              echo "${devin_trigger:-${agent_description}}"
+              echo ""
+              echo "## Objetivo"
+              echo ""
+              echo "${agent_objective}"
+              echo ""
+              echo "## Pasos"
+              echo ""
+              echo "$role_proc"
+              echo ""
+              echo "## Comportamiento del Agente"
+              echo ""
+              echo "- ${agent_behavior}"
+              echo "- Pide confirmación antes de acciones irreversibles"
+              echo "- Opera de forma segura y reversible por defecto"
+              echo ""
+              echo "## Restricciones"
+              echo ""
+              echo "- ${agent_constraints}"
+              echo "- Nunca almacenes datos sensibles"
+              echo "- Nunca ejecutes comandos destructivos sin confirmación"
+              echo ""
+              echo "## Salida Esperada"
+              echo ""
+              echo "$role_out"
+            else
+              echo "# ${agent_name}"
+              echo ""
+              echo "Eres ${agent_name}, ${desc_clean_es}."
+              echo ""
+              echo "## Objetivo"
+              echo ""
+              echo "${agent_objective}"
+              echo ""
+              echo "## Instrucciones"
+              echo ""
+              echo "$role_caps"
+              echo ""
+              echo "$role_proc"
+              echo ""
+              echo "## Comportamiento"
+              echo ""
+              echo "- ${agent_behavior}"
+              echo "- Pide confirmación antes de acciones irreversibles"
+              echo "- Sé conciso y directo"
+              echo "- Opera de forma segura y reversible por defecto"
+              echo ""
+              echo "## Restricciones"
+              echo ""
+              echo "- ${agent_constraints}"
+              echo "- Nunca almacenes ni transmitas datos sensibles"
+              echo "- Nunca ejecutes comandos destructivos sin confirmación"
+              echo ""
+              echo "## Formato de Salida"
+              echo ""
+              echo "$role_out"
+            fi
+            ;;
+          *)
+            local today_es platform_note_es
+            today_es=$(date +%Y-%m-%d 2>/dev/null || echo "unknown")
+            platform_note_es=$(get_platform_note)
+            echo "# Agente: ${agent_name}"
+            echo ""
+            echo "## Descripción"
+            echo ""
+            echo "${agent_description}"
+            echo ""
+            echo "## Objetivo"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Herramientas Disponibles"
+            echo ""
+            echo "${agent_tools:-N/A}"
+            echo ""
+            echo "## Tu Rol"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## Proceso"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Comportamiento"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Pide confirmación antes de acciones irreversibles"
+            echo "- Sé conciso y directo"
+            echo "- Prefiere pasos incrementales y verificables"
+            echo "- Opera de forma segura y reversible por defecto"
+            echo ""
+            echo "## Restricciones"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- NO almacenes ni transmitas datos sensibles"
+            echo "- NO ejecutes comandos destructivos sin confirmación"
+            echo "- NO accedas a archivos fuera del directorio de trabajo"
+            echo ""
+            echo "## Formato de Salida"
+            echo ""
+            echo "$role_out"
+            if [[ -n "$mcp_section" ]]; then
+              echo ""
+              echo "$mcp_section"
+            fi
+            echo ""
+            echo "## Instrucciones de Plataforma"
+            echo ""
+            echo "**${agent_platform}**: ${platform_note_es}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "> Modelo: ${agent_model} | Plataforma: ${agent_platform} | Creado: ${today_es}"
+            ;;
+        esac
       fi
 
     else  # English
@@ -650,62 +880,205 @@ Make sure the corresponding MCP servers are configured in your environment."
 
       else
         # ── Other platforms / English ──────────────────────────────────────────
-        local today platform_note
-        today=$(date +%Y-%m-%d 2>/dev/null || echo "unknown")
-        platform_note=$(get_platform_note)
-
-        echo "# Agent: ${agent_name}"
-        echo ""
-        echo "## Description"
-        echo ""
-        echo "${agent_description}"
-        echo ""
-        echo "## Objective"
-        echo ""
-        echo "${agent_objective}"
-        echo ""
-        echo "## Available Tools"
-        echo ""
-        echo "${agent_tools:-N/A}"
-        echo ""
-        echo "## Your Role"
-        echo ""
-        echo "$role_caps"
-        echo ""
-        echo "## Process"
-        echo ""
-        echo "$role_proc"
-        echo ""
-        echo "## Behavior"
-        echo ""
-        echo "- ${agent_behavior}"
-        echo "- Ask for confirmation before irreversible actions"
-        echo "- Be concise and direct"
-        echo "- Prefer incremental, verifiable steps"
-        echo "- Default to safe, reversible operations"
-        echo ""
-        echo "## Constraints"
-        echo ""
-        echo "- ${agent_constraints}"
-        echo "- Do NOT store or transmit sensitive data"
-        echo "- Do NOT execute destructive commands without confirmation"
-        echo "- Do NOT access files outside the working directory"
-        echo ""
-        echo "## Output Format"
-        echo ""
-        echo "$role_out"
-        if [[ -n "$mcp_section" ]]; then
-          echo ""
-          echo "$mcp_section"
-        fi
-        echo ""
-        echo "## Platform Instructions"
-        echo ""
-        echo "**${agent_platform}**: ${platform_note}"
-        echo ""
-        echo "---"
-        echo ""
-        echo "> Model: ${agent_model} | Platform: ${agent_platform} | Created: ${today}"
+        local desc_clean="${agent_description%[.!?]}"
+        case "$agent_platform" in
+          "Cursor")
+            echo "---"
+            echo "description: ${agent_description}"
+            [[ "$cursor_always_apply" == true ]] && echo "alwaysApply: true" || echo "alwaysApply: false"
+            if [[ -n "$cursor_globs" ]]; then
+              echo "globs: [\"${cursor_globs//,/\", \"}\"]"
+            fi
+            echo "---"
+            echo ""
+            echo "You are ${agent_name}, ${desc_clean}."
+            echo ""
+            echo "## Your Role"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## Objective"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Process"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Behavior"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Ask for confirmation before any irreversible action"
+            echo "- Be concise and direct"
+            echo "- Prefer incremental, verifiable steps"
+            echo "- Default to safe, reversible operations"
+            echo ""
+            echo "## Constraints"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- Do NOT store or transmit sensitive data"
+            echo "- Do NOT execute destructive commands without confirmation"
+            echo ""
+            echo "## Output Format"
+            echo ""
+            echo "$role_out"
+            ;;
+          "OpenAI Codex")
+            echo "# Agent Instructions — ${agent_name}"
+            echo ""
+            echo "You are ${agent_name}, ${desc_clean}."
+            echo ""
+            echo "## Objective"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Your Capabilities"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## How to Work"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Behavior Guidelines"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Ask for confirmation before irreversible actions"
+            echo "- Be concise — no filler"
+            echo "- Default to safe, reversible operations"
+            echo ""
+            echo "## Hard Constraints"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- Never store or transmit sensitive data"
+            echo "- Never execute destructive commands without confirmation"
+            echo ""
+            echo "## Output Format"
+            echo ""
+            echo "$role_out"
+            ;;
+          "Devin")
+            if [[ "$devin_playbook" == true ]]; then
+              echo "# Playbook: ${agent_name}"
+              echo ""
+              echo "## When to Use"
+              echo ""
+              echo "${devin_trigger:-${agent_description}}"
+              echo ""
+              echo "## Objective"
+              echo ""
+              echo "${agent_objective}"
+              echo ""
+              echo "## Steps"
+              echo ""
+              echo "$role_proc"
+              echo ""
+              echo "## Agent Behavior"
+              echo ""
+              echo "- ${agent_behavior}"
+              echo "- Ask for confirmation before irreversible actions"
+              echo "- Default to safe, reversible operations"
+              echo ""
+              echo "## Constraints"
+              echo ""
+              echo "- ${agent_constraints}"
+              echo "- Never store sensitive data"
+              echo "- Never run destructive commands without confirmation"
+              echo ""
+              echo "## Expected Output"
+              echo ""
+              echo "$role_out"
+            else
+              echo "# ${agent_name}"
+              echo ""
+              echo "You are ${agent_name}, ${desc_clean}."
+              echo ""
+              echo "## Objective"
+              echo ""
+              echo "${agent_objective}"
+              echo ""
+              echo "## Instructions"
+              echo ""
+              echo "$role_caps"
+              echo ""
+              echo "$role_proc"
+              echo ""
+              echo "## Behavior"
+              echo ""
+              echo "- ${agent_behavior}"
+              echo "- Ask for confirmation before irreversible actions"
+              echo "- Be concise and direct"
+              echo "- Default to safe, reversible operations"
+              echo ""
+              echo "## Constraints"
+              echo ""
+              echo "- ${agent_constraints}"
+              echo "- Never store or transmit sensitive data"
+              echo "- Never run destructive commands without confirmation"
+              echo ""
+              echo "## Output Format"
+              echo ""
+              echo "$role_out"
+            fi
+            ;;
+          *)
+            local today platform_note
+            today=$(date +%Y-%m-%d 2>/dev/null || echo "unknown")
+            platform_note=$(get_platform_note)
+            echo "# Agent: ${agent_name}"
+            echo ""
+            echo "## Description"
+            echo ""
+            echo "${agent_description}"
+            echo ""
+            echo "## Objective"
+            echo ""
+            echo "${agent_objective}"
+            echo ""
+            echo "## Available Tools"
+            echo ""
+            echo "${agent_tools:-N/A}"
+            echo ""
+            echo "## Your Role"
+            echo ""
+            echo "$role_caps"
+            echo ""
+            echo "## Process"
+            echo ""
+            echo "$role_proc"
+            echo ""
+            echo "## Behavior"
+            echo ""
+            echo "- ${agent_behavior}"
+            echo "- Ask for confirmation before irreversible actions"
+            echo "- Be concise and direct"
+            echo "- Prefer incremental, verifiable steps"
+            echo "- Default to safe, reversible operations"
+            echo ""
+            echo "## Constraints"
+            echo ""
+            echo "- ${agent_constraints}"
+            echo "- Do NOT store or transmit sensitive data"
+            echo "- Do NOT execute destructive commands without confirmation"
+            echo "- Do NOT access files outside the working directory"
+            echo ""
+            echo "## Output Format"
+            echo ""
+            echo "$role_out"
+            if [[ -n "$mcp_section" ]]; then
+              echo ""
+              echo "$mcp_section"
+            fi
+            echo ""
+            echo "## Platform Instructions"
+            echo ""
+            echo "**${agent_platform}**: ${platform_note}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "> Model: ${agent_model} | Platform: ${agent_platform} | Created: ${today}"
+            ;;
+        esac
       fi
 
     fi  # end LANG_CODE
@@ -791,6 +1164,11 @@ main() {
   output_filename=""
   auto_place=false
   agent_installed_skill=""
+  cursor_always_apply=false
+  cursor_globs=""
+  codex_agents_md=false
+  devin_playbook=false
+  devin_trigger=""
 
   print_header
   select_language
@@ -844,6 +1222,9 @@ main() {
       "blue" "green" "yellow" "orange" "red" "purple" "cyan" "pink"
   fi
 
+  # Platform-specific config (Cursor globs, Devin format, Codex AGENTS.md)
+  gather_platform_config
+
   # ── Step 4: Tools ───────────────────────────────────────────────────────────
   print_step "4" "$MSG_STEP_TOOLS"
 
@@ -889,6 +1270,15 @@ main() {
   if [[ "$agent_platform" == "Claude Code" ]]; then
     echo ""
     print_info ".claude/agents/${output_filename}.md"
+    if confirm "$MSG_AUTO_PLACE"; then
+      auto_place=true
+    fi
+  fi
+
+  # Auto-place: Devin Playbook
+  if [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]]; then
+    echo ""
+    print_info ".devin/playbooks/${output_filename}.md"
     if confirm "$MSG_AUTO_PLACE"; then
       auto_place=true
     fi
