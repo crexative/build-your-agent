@@ -41,6 +41,17 @@ ask() {
   read -r "$var_name"
 }
 
+ask_default() {
+  local var_name="$1"
+  local prompt="$2"
+  local default="$3"
+  echo -ne "${BOLD}${prompt} ${DIM}[${default}]${RESET}: "
+  read -r "$var_name"
+  if [[ -z "${!var_name}" ]]; then
+    eval "${var_name}=\"${default}\""
+  fi
+}
+
 ask_choice() {
   local var_name="$1"
   local prompt="$2"
@@ -100,7 +111,13 @@ ask_multiselect() {
   echo -e "${BOLD}${prompt}${RESET}"
   echo -e "${YELLOW}  ${MSG_UI_MULTISELECT_TIP:-(Enter numbers separated by spaces, e.g.: 1 3 5  |  Enter 0 to skip)}${RESET}"
   for i in "${!options[@]}"; do
-    echo -e "  ${CYAN}$((i+1))${RESET}) ${options[$i]}"
+    local _label="${options[$i]%%|*}"
+    local _desc="${options[$i]#*|}"
+    if [[ "$_desc" != "$_label" ]]; then
+      echo -e "  ${CYAN}$((i+1))${RESET}) ${BOLD}${_label}${RESET}  ${DIM}— ${_desc}${RESET}"
+    else
+      echo -e "  ${CYAN}$((i+1))${RESET}) ${_label}"
+    fi
   done
   while true; do
     echo -ne "${BOLD}${MSG_UI_SELECT:-Select} [1-${num}]: ${RESET}"
@@ -113,7 +130,7 @@ ask_multiselect() {
     selected=()
     for c in "${choices[@]}"; do
       if [[ "$c" =~ ^[0-9]+$ ]] && (( c >= 1 && c <= num )); then
-        selected+=("${options[$((c-1))]}")
+        selected+=("${options[$((c-1))]%%|*}")
       else
         valid=false
         break
@@ -181,7 +198,7 @@ load_strings() {
     MSG_STEP_PLATFORM="Plataforma Objetivo"
     MSG_STEP_TOOLS="Herramientas del Agente"
     MSG_STEP_BEHAVIOR="Comportamiento y Restricciones"
-    MSG_STEP_OUTPUT="Archivo de Salida"
+    MSG_STEP_OUTPUT="Nombre del Archivo"
     MSG_AGENT_NAME="Nombre del agente (kebab-case, ej: mi-asistente):"
     MSG_AGENT_DESC="Descripción corta (será el campo 'description' en el frontmatter):"
     MSG_AGENT_DESC_TIP="Incluye cuándo invocarlo. Ej: 'Especialista en X. Usar PROACTIVAMENTE cuando...'"
@@ -199,7 +216,8 @@ load_strings() {
     MSG_MCP_NAMES="Lista los nombres MCP separados por coma (ej: github, postgres):"
     MSG_BEHAVIOR="¿Cómo debe comportarse? (ej: proactivo, meticuloso, conciso):"
     MSG_CONSTRAINTS="¿Qué NO debe hacer jamás? (restricciones duras):"
-    MSG_OUTPUT_FILE="Nombre del archivo de salida (sin extensión, ej: mi-agente):"
+    MSG_OUTPUT_FILE="¿Cómo llamar el archivo? (sin extensión):"
+    MSG_OUTPUT_FILE_TIP="Será el nombre del archivo .md de tu agente"
     MSG_AUTO_PLACE="¿Auto-colocar en .claude/agents/ del directorio actual?"
     MSG_GENERATING="Generando tu agente..."
     MSG_GENERATED="¡Agente creado exitosamente!"
@@ -208,7 +226,7 @@ load_strings() {
     MSG_NEXT_STEPS="Próximos pasos:"
     MSG_STEP1="1. Revisa y personaliza el archivo generado"
     MSG_STEP2="2. Ajusta el prompt del sistema a tu caso de uso específico"
-    MSG_STEP3="3. Sigue las instrucciones de instalación de tu plataforma"
+    MSG_STEP3="3. Mueve el archivo a la ubicación indicada arriba"
     MSG_STEP4="4. Usa /agent ${agent_name} en Claude Code para activarlo"
     MSG_THANKS="¡Gracias por usar Build Your Agent!"
     ROLE_OPT_ORCH="Orquestador|Coordina múltiples agentes, delega subtareas, sintetiza resultados"
@@ -242,6 +260,18 @@ load_strings() {
     MSG_CODEX_STEP="Configuración Nativa de Codex"
     MSG_CODEX_AGENTS="¿Nombrar el archivo AGENTS.md? (Codex lo detecta automáticamente)"
     MSG_CODEX_AGENTS_TIP="Codex lee AGENTS.md del proyecto automáticamente, sin flags extra."
+    # Tool descriptions
+    TOOL_READ="Read|leer archivos del proyecto"
+    TOOL_WRITE="Write|crear o sobreescribir archivos"
+    TOOL_EDIT="Edit|modificar secciones de archivos"
+    TOOL_BASH="Bash|ejecutar comandos de terminal"
+    TOOL_GLOB="Glob|buscar archivos por nombre/patrón"
+    TOOL_GREP="Grep|buscar texto dentro de archivos"
+    TOOL_WEBSEARCH="WebSearch|buscar en internet"
+    TOOL_WEBFETCH="WebFetch|acceder a URLs específicas"
+    TOOL_TASK="Task|crear subtareas / lanzar subagentes"
+    TOOL_TODOWRITE="TodoWrite|gestionar listas de tareas"
+    TOOL_NOTEBOOKEDIT="NotebookEdit|editar Jupyter notebooks"
     # UI helpers
     MSG_UI_CHOOSE="Elige"
     MSG_UI_SELECT="Selecciona"
@@ -256,7 +286,7 @@ load_strings() {
     MSG_STEP_PLATFORM="Target Platform"
     MSG_STEP_TOOLS="Agent Tools"
     MSG_STEP_BEHAVIOR="Behavior & Constraints"
-    MSG_STEP_OUTPUT="Output File"
+    MSG_STEP_OUTPUT="File Name"
     MSG_AGENT_NAME="Agent name (kebab-case, e.g. my-assistant):"
     MSG_AGENT_DESC="Short description (becomes the frontmatter 'description' field):"
     MSG_AGENT_DESC_TIP="Include when to invoke it. E.g. 'Expert in X. Use PROACTIVELY when...'"
@@ -274,7 +304,8 @@ load_strings() {
     MSG_MCP_NAMES="List MCP tool names separated by commas (e.g. github, postgres):"
     MSG_BEHAVIOR="How should it behave? (e.g. proactive, meticulous, concise):"
     MSG_CONSTRAINTS="What should it NEVER do? (hard constraints):"
-    MSG_OUTPUT_FILE="Output filename (no extension, e.g. my-agent):"
+    MSG_OUTPUT_FILE="What to name the file? (no extension):"
+    MSG_OUTPUT_FILE_TIP="This will be the filename for your agent's .md file"
     MSG_AUTO_PLACE="Auto-place in .claude/agents/ of current directory?"
     MSG_GENERATING="Generating your agent..."
     MSG_GENERATED="Agent created successfully!"
@@ -283,7 +314,7 @@ load_strings() {
     MSG_NEXT_STEPS="Next steps:"
     MSG_STEP1="1. Review and customize the generated file"
     MSG_STEP2="2. Refine the system prompt for your specific use case"
-    MSG_STEP3="3. Follow your platform's install instructions"
+    MSG_STEP3="3. Move the file to the location shown above"
     MSG_STEP4="4. Use /agent ${agent_name} in Claude Code to activate it"
     MSG_THANKS="Thanks for using Build Your Agent!"
     ROLE_OPT_ORCH="Orchestrator|Coordinates multiple agents, delegates subtasks, synthesizes results"
@@ -317,6 +348,18 @@ load_strings() {
     MSG_CODEX_STEP="Codex Native Configuration"
     MSG_CODEX_AGENTS="Name the file AGENTS.md? (Codex auto-detects it)"
     MSG_CODEX_AGENTS_TIP="Codex reads AGENTS.md from the project root automatically, no flags needed."
+    # Tool descriptions
+    TOOL_READ="Read|read project files"
+    TOOL_WRITE="Write|create or overwrite files"
+    TOOL_EDIT="Edit|modify sections of existing files"
+    TOOL_BASH="Bash|run terminal commands"
+    TOOL_GLOB="Glob|find files by name/pattern"
+    TOOL_GREP="Grep|search text inside files"
+    TOOL_WEBSEARCH="WebSearch|search the web"
+    TOOL_WEBFETCH="WebFetch|fetch specific URLs"
+    TOOL_TASK="Task|create subtasks / launch subagents"
+    TOOL_TODOWRITE="TodoWrite|manage task lists"
+    TOOL_NOTEBOOKEDIT="NotebookEdit|edit Jupyter notebooks"
     # UI helpers
     MSG_UI_CHOOSE="Choose"
     MSG_UI_SELECT="Select"
@@ -1147,6 +1190,45 @@ run_install() {
 }
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
+get_activation_step() {
+  case "$agent_platform" in
+    "Claude Code")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. Escribe \`/agent ${output_filename}\` en Claude Code para activarlo" \
+        || echo "4. Type \`/agent ${output_filename}\` in Claude Code to activate it" ;;
+    "Cursor")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. El archivo \`.cursor/rules/${output_filename}.md\` se aplica automáticamente en Cursor" \
+        || echo "4. The file \`.cursor/rules/${output_filename}.md\` is applied automatically in Cursor" ;;
+    "Devin")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. Pega el contenido en el campo de instrucciones al iniciar una sesión de Devin" \
+        || echo "4. Paste the content in the instructions field when starting a Devin session" ;;
+    "Windsurf")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. El archivo \`.windsurf/rules/${output_filename}.md\` se aplica automáticamente en Windsurf" \
+        || echo "4. The file \`.windsurf/rules/${output_filename}.md\` is applied automatically in Windsurf" ;;
+    "Gemini CLI")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. Usa: \`gemini --context ${output_filename}.md\` para activar el agente" \
+        || echo "4. Use: \`gemini --context ${output_filename}.md\` to activate the agent" ;;
+    "OpenAI Codex")
+      if [[ "$codex_agents_md" == true ]]; then
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "4. Codex detecta \`AGENTS.md\` automáticamente — no necesitas ningún flag" \
+          || echo "4. Codex detects \`AGENTS.md\` automatically — no flag needed"
+      else
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "4. Usa: \`codex --system-prompt ${output_filename}.md\` para activar el agente" \
+          || echo "4. Use: \`codex --system-prompt ${output_filename}.md\` to activate the agent"
+      fi ;;
+    "Aider")
+      [[ "$LANG_CODE" == "es" ]] \
+        && echo "4. Usa: \`aider --system-prompt ${output_filename}.md\` para activar el agente" \
+        || echo "4. Use: \`aider --system-prompt ${output_filename}.md\` to activate the agent" ;;
+  esac
+}
+
 show_summary() {
   echo ""
   echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
@@ -1154,7 +1236,7 @@ show_summary() {
   echo -e "  ${MSG_STEP1}"
   echo -e "  ${MSG_STEP2}"
   echo -e "  ${MSG_STEP3}"
-  [[ "$agent_platform" == "Claude Code" ]] && echo -e "  ${MSG_STEP4}"
+  echo -e "  $(get_activation_step)"
   echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
   echo ""
   echo -e "  ${GREEN}${BOLD}${MSG_THANKS}${RESET}"
@@ -1244,8 +1326,8 @@ main() {
 
   if [[ "$agent_platform" == "Claude Code" ]]; then
     ask_multiselect agent_tools "$MSG_TOOLS_CLAUDE" \
-      "Read" "Write" "Edit" "Bash" "Glob" "Grep" \
-      "WebSearch" "WebFetch" "Task" "TodoWrite" "NotebookEdit"
+      "$TOOL_READ" "$TOOL_WRITE" "$TOOL_EDIT" "$TOOL_BASH" "$TOOL_GLOB" "$TOOL_GREP" \
+      "$TOOL_WEBSEARCH" "$TOOL_WEBFETCH" "$TOOL_TASK" "$TOOL_TODOWRITE" "$TOOL_NOTEBOOKEDIT"
   else
     ask_multiselect agent_tools "$MSG_TOOLS_GENERIC" \
       "Read files" \
@@ -1276,8 +1358,10 @@ main() {
   # ── Step 6: Output ──────────────────────────────────────────────────────────
   print_step "6" "$MSG_STEP_OUTPUT"
 
-  ask output_filename "$MSG_OUTPUT_FILE"
-  output_filename=$(echo "${output_filename:-$agent_name}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-_')
+  echo ""
+  print_info "$MSG_OUTPUT_FILE_TIP"
+  ask_default output_filename "$MSG_OUTPUT_FILE" "$agent_name"
+  output_filename=$(echo "$output_filename" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-_')
   [[ -z "$output_filename" ]] && output_filename="$agent_name"
 
   # Auto-place: Claude Code only
