@@ -31,6 +31,13 @@
 
 ## Quick Start
 
+> **First, open a terminal on your OS:**
+> - **macOS** — Press `⌘ Space`, type **Terminal**, press Enter
+> - **Linux** — Press `Ctrl + Alt + T` or search for **Terminal** in your app launcher
+> - **Windows** — Press `Win + X` → **Windows Terminal**, or install [Git Bash](https://git-scm.com/downloads) and open it
+>
+> On Windows, use **Git Bash** or **WSL** to run the commands below.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/crexative/build-your-agent/main/install.sh | bash
 ```
