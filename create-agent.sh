@@ -152,6 +152,12 @@ confirm() {
   [[ "$answer" =~ ^[YySs]$ ]]
 }
 
+confirm_yes() {
+  echo -ne "${BOLD}$1 [${MSG_UI_YN_DEFAULT:-Y/n}]: ${RESET}"
+  read -r answer
+  [[ -z "$answer" || "$answer" =~ ^[YySs]$ ]]
+}
+
 tools_to_json_array() {
   # Convert "Read, Write, Bash" → ["Read", "Write", "Bash"]
   local input="$1"
@@ -219,6 +225,7 @@ load_strings() {
     MSG_OUTPUT_FILE="¿Cómo llamar el archivo? (sin extensión):"
     MSG_OUTPUT_FILE_TIP="Será el nombre del archivo .md de tu agente"
     MSG_AUTO_PLACE="¿Auto-colocar en .claude/agents/ del directorio actual?"
+    MSG_AUTO_PLACE_TIP="Recomendado: di sí para que Claude Code detecte tu agente automáticamente con /agent ${output_filename}"
     MSG_GENERATING="Generando tu agente..."
     MSG_GENERATED="¡Agente creado exitosamente!"
     MSG_INSTALL_PROMPT="¿Ejecutar el script de instalación de la plataforma ahora?"
@@ -279,6 +286,7 @@ load_strings() {
     MSG_UI_INVALID_CHOICE="Opción inválida. Ingresa un número entre 1 y"
     MSG_UI_INVALID_SELECT="Selección inválida. Ingresa números separados por espacios, o 0 para omitir."
     MSG_UI_YN="s/N"
+    MSG_UI_YN_DEFAULT="S/n"
   else
     MSG_WELCOME="Let's create your AI agent following the official Claude Code agent specification."
     MSG_STEP_IDENTITY="Agent Identity"
@@ -307,6 +315,7 @@ load_strings() {
     MSG_OUTPUT_FILE="What to name the file? (no extension):"
     MSG_OUTPUT_FILE_TIP="This will be the filename for your agent's .md file"
     MSG_AUTO_PLACE="Auto-place in .claude/agents/ of current directory?"
+    MSG_AUTO_PLACE_TIP="Recommended: say yes so Claude Code detects your agent automatically with /agent ${output_filename}"
     MSG_GENERATING="Generating your agent..."
     MSG_GENERATED="Agent created successfully!"
     MSG_INSTALL_PROMPT="Run the platform install script now?"
@@ -367,6 +376,7 @@ load_strings() {
     MSG_UI_INVALID_CHOICE="Invalid choice. Enter a number between 1 and"
     MSG_UI_INVALID_SELECT="Invalid selection. Enter numbers separated by spaces, or 0 to skip."
     MSG_UI_YN="y/N"
+    MSG_UI_YN_DEFAULT="Y/n"
   fi
 }
 
@@ -1368,7 +1378,8 @@ main() {
   if [[ "$agent_platform" == "Claude Code" ]]; then
     echo ""
     print_info ".claude/agents/${output_filename}.md"
-    if confirm "$MSG_AUTO_PLACE"; then
+    print_info "$MSG_AUTO_PLACE_TIP"
+    if confirm_yes "$MSG_AUTO_PLACE"; then
       auto_place=true
     fi
   fi
@@ -1377,7 +1388,8 @@ main() {
   if [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]]; then
     echo ""
     print_info ".devin/playbooks/${output_filename}.md"
-    if confirm "$MSG_AUTO_PLACE"; then
+    print_info "$MSG_AUTO_PLACE_TIP"
+    if confirm_yes "$MSG_AUTO_PLACE"; then
       auto_place=true
     fi
   fi
