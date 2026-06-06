@@ -188,9 +188,9 @@ load_strings() {
     MSG_AGENT_OBJ="¿Cuál es su objetivo principal?"
     MSG_AGENT_ROLE="¿Qué rol desempeña este agente?"
     MSG_MODEL_SELECT="¿Qué modelo usará este agente?"
-    MSG_MODEL_SONNET="sonnet — Mejor para código y tareas generales (recomendado)"
-    MSG_MODEL_OPUS="opus — Mejor para razonamiento profundo, orquestación, arquitectura"
-    MSG_MODEL_HAIKU="haiku — Mejor para tareas ligeras, alto volumen, respuestas rápidas"
+    MSG_MODEL_SONNET="claude-sonnet-4-6 — Mejor para código y tareas generales (recomendado)"
+    MSG_MODEL_OPUS="claude-opus-4-8 — Mejor para razonamiento profundo, orquestación, arquitectura"
+    MSG_MODEL_HAIKU="claude-haiku-4-5 — Mejor para tareas ligeras, alto volumen, respuestas rápidas"
     MSG_PLATFORM="¿En qué plataforma desplegar?"
     MSG_COLOR_SELECT="¿Qué color para el ícono del agente en Claude Code?"
     MSG_TOOLS_CLAUDE="¿Qué herramientas puede usar? (nombres oficiales de Claude Code)"
@@ -256,9 +256,9 @@ load_strings() {
     MSG_AGENT_OBJ="What is its main objective?"
     MSG_AGENT_ROLE="What role does this agent play?"
     MSG_MODEL_SELECT="Which model should this agent use?"
-    MSG_MODEL_SONNET="sonnet — Best for coding and general tasks (recommended)"
-    MSG_MODEL_OPUS="opus — Best for deep reasoning, orchestration, architectural decisions"
-    MSG_MODEL_HAIKU="haiku — Best for lightweight, high-volume, fast-response tasks"
+    MSG_MODEL_SONNET="claude-sonnet-4-6 — Best for coding and general tasks (recommended)"
+    MSG_MODEL_OPUS="claude-opus-4-8 — Best for deep reasoning, orchestration, architectural decisions"
+    MSG_MODEL_HAIKU="claude-haiku-4-5 — Best for lightweight, high-volume, fast-response tasks"
     MSG_PLATFORM="Which platform are you targeting?"
     MSG_COLOR_SELECT="What color for this agent's icon in Claude Code?"
     MSG_TOOLS_CLAUDE="Which tools can it use? (official Claude Code tool names)"
@@ -1202,22 +1202,21 @@ main() {
     "$ROLE_OPT_SPEC" \
     "$ROLE_OPT_GEN"
 
-  # ── Step 2: Model ───────────────────────────────────────────────────────────
-  print_step "2" "$MSG_STEP_MODEL"
-
-  ask_choice_with_desc agent_model "$MSG_MODEL_SELECT" \
-    "sonnet|${MSG_MODEL_SONNET}" \
-    "opus|${MSG_MODEL_OPUS}" \
-    "haiku|${MSG_MODEL_HAIKU}"
-
-  # ── Step 3: Platform ────────────────────────────────────────────────────────
-  print_step "3" "$MSG_STEP_PLATFORM"
+  # ── Step 2: Platform ────────────────────────────────────────────────────────
+  print_step "2" "$MSG_STEP_PLATFORM"
 
   ask_choice agent_platform "$MSG_PLATFORM" \
     "Claude Code" "Cursor" "Devin" "Windsurf" "Gemini CLI" "OpenAI Codex" "Aider"
 
-  # Color: Claude Code only
+  # ── Step 3: Model + Color (Claude Code only) ─────────────────────────────────
   if [[ "$agent_platform" == "Claude Code" ]]; then
+    print_step "3" "$MSG_STEP_MODEL"
+
+    ask_choice_with_desc agent_model "$MSG_MODEL_SELECT" \
+      "claude-sonnet-4-6|${MSG_MODEL_SONNET}" \
+      "claude-opus-4-8|${MSG_MODEL_OPUS}" \
+      "claude-haiku-4-5-20251001|${MSG_MODEL_HAIKU}"
+
     echo ""
     ask_choice agent_color "$MSG_COLOR_SELECT" \
       "blue" "green" "yellow" "orange" "red" "purple" "cyan" "pink"
