@@ -18,6 +18,17 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 py_version=$(python3 --version | awk '{print $2}' | cut -d. -f1-2)
+py_major=$(echo "$py_version" | cut -d. -f1)
+py_minor=$(echo "$py_version" | cut -d. -f2)
+if ! [[ "$py_major" =~ ^[0-9]+$ && "$py_minor" =~ ^[0-9]+$ ]]; then
+  echo -e "${RED}✖ Could not determine Python version. Install Python 3.10 or higher.${RESET}"
+  exit 1
+fi
+if (( py_major < 3 || (py_major == 3 && py_minor < 10) )); then
+  echo -e "${RED}✖ Python 3.10+ required. Found ${py_version}.${RESET}"
+  echo "Install from https://python.org"
+  exit 1
+fi
 echo -e "${GREEN}✔ Python ${py_version} detected${RESET}"
 
 # ─── Install Aider ────────────────────────────────────────────────────────────

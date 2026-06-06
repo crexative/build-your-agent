@@ -123,6 +123,37 @@ O comienza desde la **[plantilla base](templates/base-agent.md)** y personalíza
 
 ---
 
+## Seguridad
+
+Este proyecto fue auditado con revisión de código y seguridad multi-agente. Se aplicaron las siguientes mejoras:
+
+**Prevención de inyección de shell**
+- Reemplazados todos los `eval` en asignación de variables por `printf -v` — elimina la inyección de código vía strings del usuario
+- Corregida variable sin comillas en `tools_to_json_array` para evitar glob expansion en input del usuario
+- Añadido escape de comillas dobles antes de inyectar input del usuario en frontmatter YAML
+
+**Endurecimiento del script de instalación**
+- Añadido `trap 'rm -f "$TMP"' EXIT INT TERM` — el archivo temporal siempre se limpia, incluso con Ctrl-C o error
+- Eliminado `chmod +x` innecesario sobre el archivo temporal
+- Soporte para `NO_COLOR` y `TERM=dumb` para output limpio en CI y entornos pipe
+
+**Verificación de versiones**
+- `claude-code.sh` y `gemini-cli.sh`: guard numérico antes de aritmética de versión de Node.js
+- `aider.sh`: gate de versión mínima Python 3.10+ añadido (antes solo detectaba, nunca lo exigía)
+- Corregido `tr -d 'v'` → `sed 's/^v//'` para quitar solo la `v` inicial de las versiones
+
+**Correcciones de fiabilidad**
+- `SCRIPT_DIR` resuelto desde `BASH_SOURCE[0]` para que los scripts de instalación funcionen desde repositorio clonado
+- Confirmación de sobreescritura cuando el archivo de agente ya existe
+- `_place_choice` inicializado a `""` para evitar abort de `set -u` en plataformas edge-case
+- Limpiado el arm duplicado `"Global"|"Global"` en el case
+- Corregida la referencia incorrecta a `/agent-name` como slash command en templates y strings i18n
+
+**devin.sh**
+- Reemplazado `ls ./*.md` por `shopt -s nullglob` + glob en array — seguro con nombres de archivo con espacios
+
+---
+
 ## Contribuir
 
 ¡Damos la bienvenida a todo tipo de contribuciones — nuevas plantillas, soporte para nuevas plataformas, traducciones, mejoras de documentación y corrección de errores!

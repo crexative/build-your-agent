@@ -17,7 +17,11 @@ if ! command -v node &>/dev/null; then
   exit 1
 fi
 
-node_version=$(node --version | tr -d 'v' | cut -d. -f1)
+node_version=$(node --version | sed 's/^v//' | cut -d. -f1)
+if ! [[ "$node_version" =~ ^[0-9]+$ ]]; then
+  echo -e "${RED}✖ Could not determine Node.js version. Install Node.js v18 or higher.${RESET}"
+  exit 1
+fi
 if (( node_version < 18 )); then
   echo -e "${YELLOW}⚠ Node.js v${node_version} found. Gemini CLI requires v18+.${RESET}"
   exit 1

@@ -4,18 +4,24 @@
 # Compatible with: Claude Code, Cursor, Devin, Windsurf, Gemini CLI, OpenAI Codex, Aider
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # When piped (curl | bash), stdin is the pipe — redirect to terminal so read works
 [ -t 0 ] || exec < /dev/tty
 
 # ─── Terminal Colors ───────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-DIM='\033[2m'
-RESET='\033[0m'
+if [[ -t 1 && "${NO_COLOR:-}" == "" && "${TERM:-}" != "dumb" ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  CYAN='\033[0;36m'
+  BOLD='\033[1m'
+  DIM='\033[2m'
+  RESET='\033[0m'
+else
+  RED=''; GREEN=''; YELLOW=''; BLUE=''; CYAN=''; BOLD=''; DIM=''; RESET=''
+fi
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
 print_header() {
@@ -51,7 +57,7 @@ ask_default() {
   echo -ne "${BOLD}${prompt} ${DIM}[${default}]${RESET}: "
   read -r "$var_name"
   if [[ -z "${!var_name}" ]]; then
-    eval "${var_name}=\"${default}\""
+    printf -v "$var_name" '%s' "$default"
   fi
 }
 
@@ -69,7 +75,7 @@ ask_choice() {
     echo -ne "${BOLD}${MSG_UI_CHOOSE:-Choose} [1-${num}]: ${RESET}"
     read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= num )); then
-      eval "${var_name}=\"\${options[\$((choice-1))]}\""
+      printf -v "$var_name" '%s' "${options[$((choice-1))]}"
       break
     fi
     echo -e "${RED}${MSG_UI_INVALID_CHOICE:-Invalid choice. Enter a number between 1 and} ${num}.${RESET}"
@@ -95,7 +101,7 @@ ask_choice_with_desc() {
     read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= num )); then
       local selected="${entries[$((choice-1))]%%|*}"
-      eval "${var_name}=\"${selected}\""
+      printf -v "$var_name" '%s' "$selected"
       break
     fi
     echo -e "${RED}${MSG_UI_INVALID_CHOICE:-Invalid choice. Enter a number between 1 and} ${num}.${RESET}"
@@ -126,7 +132,7 @@ ask_multiselect() {
     echo -ne "${BOLD}${MSG_UI_SELECT:-Select} [1-${num}]: ${RESET}"
     read -r -a choices
     if [[ "${#choices[@]}" -eq 1 ]] && [[ "${choices[0]}" == "0" ]]; then
-      eval "${var_name}=\"\""
+      printf -v "$var_name" '%s' ""
       break
     fi
     local valid=true
@@ -142,7 +148,7 @@ ask_multiselect() {
     if [[ "$valid" == true ]] && (( ${#selected[@]} > 0 )); then
       local joined
       joined=$(IFS=', '; echo "${selected[*]}")
-      eval "${var_name}=\"${joined}\""
+      printf -v "$var_name" '%s' "$joined"
       break
     fi
     echo -e "${RED}${MSG_UI_INVALID_SELECT:-Invalid selection. Enter numbers separated by spaces, or 0 to skip.}${RESET}"
@@ -167,10 +173,12 @@ tools_to_json_array() {
   [[ -z "$input" ]] && echo "" && return
   local json='['
   local first=true
-  local IFS=','
-  for item in $input; do
+  local -a items
+  IFS=',' read -ra items <<< "$input"
+  for item in "${items[@]}"; do
     item="${item#"${item%%[![:space:]]*}"}"  # ltrim
     item="${item%"${item##*[![:space:]]}"}"  # rtrim
+    item="${item//\"/\\\"}"                  # escape double-quotes
     [[ -z "$item" ]] && continue
     [[ "$first" == false ]] && json+=', '
     json+="\"${item}\""
@@ -229,7 +237,7 @@ load_strings() {
     MSG_OUTPUT_FILE="¿Cómo llamar el archivo? (sin extensión):"
     MSG_OUTPUT_FILE_TIP="Será el nombre del archivo .md de tu agente"
     MSG_AUTO_PLACE="¿Auto-colocar en .claude/agents/ del directorio actual?"
-    MSG_AUTO_PLACE_TIP="Recomendado: di sí para que Claude Code detecte tu agente automáticamente con /${output_filename}"
+    MSG_AUTO_PLACE_TIP="Recomendado: di sí para que Claude Code detecte tu agente automáticamente. Luego pide: 'Usa el agente [nombre] para [tarea]'"
     MSG_PLACE_WHERE="¿Dónde instalar el agente?"
     MSG_PLACE_GLOBAL="Global|~/.claude/agents/ — disponible en TODOS tus proyectos (recomendado)"
     MSG_PLACE_PROJECT="Proyecto|.claude/agents/ — solo en el directorio actual"
@@ -246,7 +254,7 @@ load_strings() {
     MSG_STEP3="3. Mueve el archivo a la ubicación indicada arriba"
     MSG_STEP3_DONE="3. ✔ Agente instalado automáticamente"
     MSG_RUN_AGAIN="Para crear otro agente:"
-    MSG_STEP4="4. Usa /${agent_name} en Claude Code para activarlo"
+    MSG_STEP4="4. En Claude Code pide: 'Usa el agente [nombre] para [tu tarea]'"
     MSG_THANKS="¡Gracias por usar Build Your Agent!"
     ROLE_OPT_ORCH="Orquestador|Coordina múltiples agentes, delega subtareas, sintetiza resultados"
     ROLE_OPT_WORK="Trabajador|Ejecuta tareas específicas, llamado por orquestadores"
@@ -328,7 +336,7 @@ load_strings() {
     MSG_OUTPUT_FILE="What to name the file? (no extension):"
     MSG_OUTPUT_FILE_TIP="This will be the filename for your agent's .md file"
     MSG_AUTO_PLACE="Auto-place in .claude/agents/ of current directory?"
-    MSG_AUTO_PLACE_TIP="Recommended: say yes so Claude Code detects your agent automatically with /${output_filename}"
+    MSG_AUTO_PLACE_TIP="Recommended: say yes so Claude Code detects your agent automatically. Then ask: 'Use the [name] agent for [task]'"
     MSG_PLACE_WHERE="Where do you want to install the agent?"
     MSG_PLACE_GLOBAL="Global|~/.claude/agents/ — available in ALL your projects (recommended)"
     MSG_PLACE_PROJECT="Project|.claude/agents/ — only in the current directory"
@@ -345,7 +353,7 @@ load_strings() {
     MSG_STEP3="3. Move the file to the location shown above"
     MSG_STEP3_DONE="3. ✔ Agent installed automatically"
     MSG_RUN_AGAIN="To create another agent:"
-    MSG_STEP4="4. Use /${agent_name} in Claude Code to activate it"
+    MSG_STEP4="4. In Claude Code ask: 'Use the [name] agent for [your task]'"
     MSG_THANKS="Thanks for using Build Your Agent!"
     ROLE_OPT_ORCH="Orchestrator|Coordinates multiple agents, delegates subtasks, synthesizes results"
     ROLE_OPT_WORK="Worker|Executes specific tasks, called by orchestrators"
@@ -404,6 +412,9 @@ load_strings() {
 # ─── Role-Based Content Defaults ──────────────────────────────────────────────
 get_role_defaults() {
   local role="$1"
+  ROLE_CAPS=""
+  ROLE_PROC=""
+  ROLE_OUT=""
   if [[ "$LANG_CODE" == "es" ]]; then
     case "$role" in
       Orquestador)
@@ -669,6 +680,15 @@ Make sure the corresponding MCP servers are configured in your environment."
     fi
   fi
 
+  # ── Overwrite guard ────────────────────────────────────────────────────────
+  if [[ -f "$output_path" ]]; then
+    print_warning "File already exists: $output_path"
+    if ! confirm_yes "Overwrite?"; then
+      print_info "Aborted."
+      return 1
+    fi
+  fi
+
   # ── Write the file ─────────────────────────────────────────────────────────
   {
     if [[ "$agent_platform" == "Claude Code" ]]; then
@@ -736,7 +756,8 @@ Make sure the corresponding MCP servers are configured in your environment."
             echo "description: ${agent_description}"
             [[ "$cursor_always_apply" == true ]] && echo "alwaysApply: true" || echo "alwaysApply: false"
             if [[ -n "$cursor_globs" ]]; then
-              echo "globs: [\"${cursor_globs//,/\", \"}\"]"
+              local cursor_globs_safe="${cursor_globs//\"/}"
+              echo "globs: [\"${cursor_globs_safe//,/\", \"}\"]"
             fi
             echo "---"
             echo ""
@@ -983,7 +1004,8 @@ Make sure the corresponding MCP servers are configured in your environment."
             echo "description: ${agent_description}"
             [[ "$cursor_always_apply" == true ]] && echo "alwaysApply: true" || echo "alwaysApply: false"
             if [[ -n "$cursor_globs" ]]; then
-              echo "globs: [\"${cursor_globs//,/\", \"}\"]"
+              local cursor_globs_safe="${cursor_globs//\"/}"
+              echo "globs: [\"${cursor_globs_safe//,/\", \"}\"]"
             fi
             echo "---"
             echo ""
@@ -1215,7 +1237,7 @@ run_install() {
   esac
 
   local install_script
-  install_script="$(dirname "$0")/install/${script_name}.sh"
+  install_script="${SCRIPT_DIR}/install/${script_name}.sh"
 
   if [[ -f "$install_script" ]]; then
     echo ""
@@ -1326,6 +1348,8 @@ show_summary() {
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 main() {
+  trap 'echo ""; echo "Aborted."; exit 130' INT TERM
+
   # Global state
   LANG_CODE="en"
   agent_name=""
@@ -1470,7 +1494,7 @@ main() {
 
   if [[ -n "$_global_path" || -n "$_project_path" ]]; then
     echo ""
-    local _place_choice
+    local _place_choice=""
     if [[ -n "$_global_path" && -n "$_project_path" ]]; then
       ask_choice_with_desc _place_choice "$MSG_PLACE_WHERE" \
         "$MSG_PLACE_GLOBAL" \
@@ -1487,7 +1511,7 @@ main() {
     fi
 
     case "$_place_choice" in
-      "Global"|"Global")
+      "Global")
         auto_place=true
         auto_place_global=true ;;
       "Proyecto"|"Project")

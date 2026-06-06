@@ -62,7 +62,7 @@ When given a task:
 ## Platform Notes
 
 **Claude Code**: Save as `.claude/agents/<agent-name>.md` in your project root.
-Activate with `/agent <agent-name>` in Claude Code.
+Ask in Claude Code: 'Use the <agent-name> agent for [your task]'.
 
 **Other platforms**: See the [install guides](../../install/) for Cursor, Windsurf,
 Gemini CLI, Codex, Aider, and Devin.

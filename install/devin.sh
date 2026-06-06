@@ -23,9 +23,11 @@ echo "     and reference it in your session instructions"
 echo ""
 
 # ─── Copy agent file hint ─────────────────────────────────────────────────────
-if ls ./*.md 1>/dev/null 2>&1; then
+shopt -s nullglob
+md_files=(./*.md)
+if (( ${#md_files[@]} > 0 )); then
   echo -e "${GREEN}Agent files found in current directory:${RESET}"
-  ls ./*.md
+  printf '  %s\n' "${md_files[@]}"
   echo ""
   echo "Copy the content of your agent file and paste it into the Devin session."
 fi

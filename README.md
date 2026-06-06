@@ -128,6 +128,37 @@ Or start from the **[base template](templates/base-agent.md)** and customize it 
 
 ---
 
+## Security
+
+This project was audited with multi-agent code and security review. The following hardening was applied:
+
+**Shell injection prevention**
+- Replaced all `eval` variable assignments with `printf -v` — eliminates code injection via user-supplied strings
+- Fixed unquoted variable in `tools_to_json_array` to prevent glob expansion on user input
+- Added double-quote escaping before injecting user input into YAML frontmatter
+
+**Install script hardening**
+- Added `trap 'rm -f "$TMP"' EXIT INT TERM` — temp file is always cleaned up, even on Ctrl-C or error
+- Removed unnecessary `chmod +x` on temp file
+- Added `NO_COLOR` and `TERM=dumb` support so output is clean in CI and piped environments
+
+**Version checks**
+- `claude-code.sh` and `gemini-cli.sh`: numeric guard before Node.js version arithmetic — prevents injection via crafted `node --version` output
+- `aider.sh`: Python 3.10+ minimum version gate added (previously only detected, never enforced)
+- Fixed `tr -d 'v'` → `sed 's/^v//'` to strip only the leading `v` from version strings
+
+**Reliability fixes**
+- `SCRIPT_DIR` resolved from `BASH_SOURCE[0]` so platform install scripts work when running from a cloned repo
+- Added overwrite confirmation when the target agent file already exists
+- `_place_choice` initialized to `""` to prevent `set -u` abort on edge-case platforms
+- Cleaned up duplicate `"Global"|"Global"` case arm
+- Fixed incorrect `/agent-name` slash-command reference in templates and i18n strings (Claude Code agents are invoked by name in natural language, not slash commands)
+
+**devin.sh**
+- Replaced `ls ./*.md` with `shopt -s nullglob` + array glob — safe with filenames containing spaces or special characters
+
+---
+
 ## Contributing
 
 We welcome contributions of all kinds — new templates, new platform support, translations, documentation improvements, and bug fixes.
