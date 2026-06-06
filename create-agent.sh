@@ -4,6 +4,9 @@
 # Compatible with: Claude Code, Cursor, Devin, Windsurf, Gemini CLI, OpenAI Codex, Aider
 set -euo pipefail
 
+# When piped (curl | bash), stdin is the pipe — redirect to terminal so read works
+[ -t 0 ] || exec < /dev/tty
+
 # ─── Terminal Colors ───────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
