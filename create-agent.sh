@@ -593,14 +593,16 @@ generate_agent_file() {
   local output_path
   if [[ "$agent_platform" == "OpenAI Codex" ]] && [[ "$codex_agents_md" == true ]]; then
     output_path="AGENTS.md"
-  elif [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]]; then
-    if [[ "$auto_place" == true ]]; then
-      mkdir -p ".devin/playbooks"
-      output_path=".devin/playbooks/${output_filename}.md"
-    else
-      output_path="${output_filename}.md"
-    fi
-  elif [[ "$auto_place" == true ]]; then
+  elif [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]] && [[ "$auto_place" == true ]]; then
+    mkdir -p ".devin/playbooks"
+    output_path=".devin/playbooks/${output_filename}.md"
+  elif [[ "$agent_platform" == "Cursor" ]] && [[ "$auto_place" == true ]]; then
+    mkdir -p ".cursor/rules"
+    output_path=".cursor/rules/${output_filename}.md"
+  elif [[ "$agent_platform" == "Windsurf" ]] && [[ "$auto_place" == true ]]; then
+    mkdir -p ".windsurf/rules"
+    output_path=".windsurf/rules/${output_filename}.md"
+  elif [[ "$agent_platform" == "Claude Code" ]] && [[ "$auto_place" == true ]]; then
     mkdir -p ".claude/agents"
     output_path=".claude/agents/${output_filename}.md"
   else
@@ -1374,21 +1376,45 @@ main() {
   output_filename=$(echo "$output_filename" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-_')
   [[ -z "$output_filename" ]] && output_filename="$agent_name"
 
-  # Auto-place: Claude Code only
-  if [[ "$agent_platform" == "Claude Code" ]]; then
-    echo ""
-    print_info ".claude/agents/${output_filename}.md"
-    print_info "$MSG_AUTO_PLACE_TIP"
-    if confirm_yes "$MSG_AUTO_PLACE"; then
-      auto_place=true
-    fi
-  fi
+  # Auto-place: platforms with a standard directory
+  local _autoplace_path="" _autoplace_tip=""
+  case "$agent_platform" in
+    "Claude Code")
+      _autoplace_path=".claude/agents/${output_filename}.md"
+      if [[ "$LANG_CODE" == "es" ]]; then
+        _autoplace_tip="Recomendado: di sí para usar /agent ${output_filename} en Claude Code"
+      else
+        _autoplace_tip="Recommended: say yes to use /agent ${output_filename} in Claude Code"
+      fi ;;
+    "Cursor")
+      _autoplace_path=".cursor/rules/${output_filename}.md"
+      if [[ "$LANG_CODE" == "es" ]]; then
+        _autoplace_tip="Recomendado: di sí para que Cursor aplique la regla automáticamente"
+      else
+        _autoplace_tip="Recommended: say yes so Cursor applies the rule automatically"
+      fi ;;
+    "Windsurf")
+      _autoplace_path=".windsurf/rules/${output_filename}.md"
+      if [[ "$LANG_CODE" == "es" ]]; then
+        _autoplace_tip="Recomendado: di sí para que Windsurf detecte la regla automáticamente"
+      else
+        _autoplace_tip="Recommended: say yes so Windsurf detects the rule automatically"
+      fi ;;
+    "Devin")
+      if [[ "$devin_playbook" == true ]]; then
+        _autoplace_path=".devin/playbooks/${output_filename}.md"
+        if [[ "$LANG_CODE" == "es" ]]; then
+          _autoplace_tip="Recomendado: di sí para guardar el playbook donde Devin lo detecta"
+        else
+          _autoplace_tip="Recommended: say yes to save the playbook where Devin detects it"
+        fi
+      fi ;;
+  esac
 
-  # Auto-place: Devin Playbook
-  if [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]]; then
+  if [[ -n "$_autoplace_path" ]]; then
     echo ""
-    print_info ".devin/playbooks/${output_filename}.md"
-    print_info "$MSG_AUTO_PLACE_TIP"
+    print_info "$_autoplace_path"
+    print_info "$_autoplace_tip"
     if confirm_yes "$MSG_AUTO_PLACE"; then
       auto_place=true
     fi
