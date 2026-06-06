@@ -52,13 +52,13 @@ ask_choice() {
     echo -e "  ${CYAN}$((i+1))${RESET}) ${options[$i]}"
   done
   while true; do
-    echo -ne "${BOLD}Choose [1-${num}]: ${RESET}"
+    echo -ne "${BOLD}${MSG_UI_CHOOSE:-Choose} [1-${num}]: ${RESET}"
     read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= num )); then
       eval "${var_name}=\"\${options[\$((choice-1))]}\""
       break
     fi
-    echo -e "${RED}Invalid choice. Enter a number between 1 and ${num}.${RESET}"
+    echo -e "${RED}${MSG_UI_INVALID_CHOICE:-Invalid choice. Enter a number between 1 and} ${num}.${RESET}"
   done
 }
 
@@ -77,14 +77,14 @@ ask_choice_with_desc() {
     echo -e "     ${DIM}${desc}${RESET}"
   done
   while true; do
-    echo -ne "${BOLD}Choose [1-${num}]: ${RESET}"
+    echo -ne "${BOLD}${MSG_UI_CHOOSE:-Choose} [1-${num}]: ${RESET}"
     read -r choice
     if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= num )); then
       local selected="${entries[$((choice-1))]%%|*}"
       eval "${var_name}=\"${selected}\""
       break
     fi
-    echo -e "${RED}Invalid choice. Enter a number between 1 and ${num}.${RESET}"
+    echo -e "${RED}${MSG_UI_INVALID_CHOICE:-Invalid choice. Enter a number between 1 and} ${num}.${RESET}"
   done
 }
 
@@ -98,12 +98,12 @@ ask_multiselect() {
   local num="${#options[@]}"
   local selected=()
   echo -e "${BOLD}${prompt}${RESET}"
-  echo -e "${YELLOW}  (Enter numbers separated by spaces, e.g.: 1 3 5  |  Enter 0 to skip)${RESET}"
+  echo -e "${YELLOW}  ${MSG_UI_MULTISELECT_TIP:-(Enter numbers separated by spaces, e.g.: 1 3 5  |  Enter 0 to skip)}${RESET}"
   for i in "${!options[@]}"; do
     echo -e "  ${CYAN}$((i+1))${RESET}) ${options[$i]}"
   done
   while true; do
-    echo -ne "${BOLD}Select [1-${num}]: ${RESET}"
+    echo -ne "${BOLD}${MSG_UI_SELECT:-Select} [1-${num}]: ${RESET}"
     read -r -a choices
     if [[ "${#choices[@]}" -eq 1 ]] && [[ "${choices[0]}" == "0" ]]; then
       eval "${var_name}=\"\""
@@ -125,14 +125,14 @@ ask_multiselect() {
       eval "${var_name}=\"${joined}\""
       break
     fi
-    echo -e "${RED}Invalid selection. Enter numbers 1–${num} separated by spaces, or 0 to skip.${RESET}"
+    echo -e "${RED}${MSG_UI_INVALID_SELECT:-Invalid selection. Enter numbers separated by spaces, or 0 to skip.}${RESET}"
   done
 }
 
 confirm() {
-  echo -ne "${BOLD}$1 [y/N]: ${RESET}"
+  echo -ne "${BOLD}$1 [${MSG_UI_YN:-y/N}]: ${RESET}"
   read -r answer
-  [[ "$answer" =~ ^[Yy]$ ]]
+  [[ "$answer" =~ ^[YySs]$ ]]
 }
 
 tools_to_json_array() {
@@ -242,6 +242,13 @@ load_strings() {
     MSG_CODEX_STEP="Configuración Nativa de Codex"
     MSG_CODEX_AGENTS="¿Nombrar el archivo AGENTS.md? (Codex lo detecta automáticamente)"
     MSG_CODEX_AGENTS_TIP="Codex lee AGENTS.md del proyecto automáticamente, sin flags extra."
+    # UI helpers
+    MSG_UI_CHOOSE="Elige"
+    MSG_UI_SELECT="Selecciona"
+    MSG_UI_MULTISELECT_TIP="(Ingresa números separados por espacios, ej: 1 3 5  |  Ingresa 0 para omitir)"
+    MSG_UI_INVALID_CHOICE="Opción inválida. Ingresa un número entre 1 y"
+    MSG_UI_INVALID_SELECT="Selección inválida. Ingresa números separados por espacios, o 0 para omitir."
+    MSG_UI_YN="s/N"
   else
     MSG_WELCOME="Let's create your AI agent following the official Claude Code agent specification."
     MSG_STEP_IDENTITY="Agent Identity"
@@ -310,6 +317,13 @@ load_strings() {
     MSG_CODEX_STEP="Codex Native Configuration"
     MSG_CODEX_AGENTS="Name the file AGENTS.md? (Codex auto-detects it)"
     MSG_CODEX_AGENTS_TIP="Codex reads AGENTS.md from the project root automatically, no flags needed."
+    # UI helpers
+    MSG_UI_CHOOSE="Choose"
+    MSG_UI_SELECT="Select"
+    MSG_UI_MULTISELECT_TIP="(Enter numbers separated by spaces, e.g.: 1 3 5  |  Enter 0 to skip)"
+    MSG_UI_INVALID_CHOICE="Invalid choice. Enter a number between 1 and"
+    MSG_UI_INVALID_SELECT="Invalid selection. Enter numbers separated by spaces, or 0 to skip."
+    MSG_UI_YN="y/N"
   fi
 }
 
