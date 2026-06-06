@@ -215,6 +215,17 @@ load_strings() {
     ROLE_OPT_WORK="Trabajador|Ejecuta tareas específicas, llamado por orquestadores"
     ROLE_OPT_SPEC="Especialista|Experto profundo en un dominio (código, seguridad, datos...)"
     ROLE_OPT_GEN="General|Asistente de propósito general, maneja tareas diversas"
+    MSG_SKILLS_SEARCHING="Buscando skills relevantes en el ecosistema skills.sh..."
+    MSG_SKILLS_FOUND="Skills relevantes encontradas:"
+    MSG_SKILLS_NONE="No se encontraron skills específicas. Continuando sin contexto adicional."
+    MSG_SKILLS_ENRICH="Instalar una skill enriquecerá el conocimiento de tu agente con patrones probados."
+    MSG_SKILLS_PROMPT="¿Instalar alguna? [número o Enter para saltar]:"
+    MSG_SKILLS_INSTALLING="Instalando skill:"
+    MSG_SKILLS_DONE="Skill instalada. Tu agente la usará como referencia de conocimiento."
+    MSG_SKILLS_MANUAL="Puedes instalarla manualmente con:"
+    MSG_SKILLS_STEP="Descubrimiento de Skills"
+    MSG_SKILLS_REF_TITLE="## Skills de Referencia"
+    MSG_SKILLS_REF_BODY="Este agente está enriquecido por la siguiente skill instalada. Invócala cuando necesites referencia especializada del dominio."
   else
     MSG_WELCOME="Let's create your AI agent following the official Claude Code agent specification."
     MSG_STEP_IDENTITY="Agent Identity"
@@ -256,6 +267,17 @@ load_strings() {
     ROLE_OPT_WORK="Worker|Executes specific tasks, called by orchestrators"
     ROLE_OPT_SPEC="Specialist|Deep expert in one domain (code, security, data...)"
     ROLE_OPT_GEN="General|General-purpose assistant, handles diverse tasks"
+    MSG_SKILLS_SEARCHING="Searching the skills.sh ecosystem for relevant skills..."
+    MSG_SKILLS_FOUND="Relevant skills found:"
+    MSG_SKILLS_NONE="No specific skills found. Continuing without additional context."
+    MSG_SKILLS_ENRICH="Installing a skill will enrich your agent with battle-tested domain patterns."
+    MSG_SKILLS_PROMPT="Install one? [number or Enter to skip]:"
+    MSG_SKILLS_INSTALLING="Installing skill:"
+    MSG_SKILLS_DONE="Skill installed. Your agent will reference it as domain knowledge."
+    MSG_SKILLS_MANUAL="You can install it manually with:"
+    MSG_SKILLS_STEP="Skill Discovery"
+    MSG_SKILLS_REF_TITLE="## Reference Skills"
+    MSG_SKILLS_REF_BODY="This agent is enriched by the following installed skill. Invoke it when you need specialized domain reference."
   fi
 }
 
@@ -308,6 +330,81 @@ get_role_defaults() {
         ROLE_OUT="- Clear structured responses with headings where appropriate\n- Code blocks for commands, paths, and snippets\n- Summary of completed actions at the end\n- Ask for clarification on ambiguous requests before acting"
         ;;
     esac
+  fi
+}
+
+# ─── Skill Discovery ──────────────────────────────────────────────────────────
+extract_keywords() {
+  # Pull first 3 meaningful words from description + objective
+  echo "$1 $2" \
+    | tr '[:upper:]' '[:lower:]' \
+    | tr -cs '[:alpha:]' ' ' \
+    | tr ' ' '\n' \
+    | grep -v -E '^(the|a|an|is|for|use|when|and|or|in|to|of|with|this|that|be|do|not|its|as|by|on|at|can|will|should|must|may|you|your|my|our|i|we|they|are|was|were|has|have|had|been|am|proactively|after|before|writing|creating|building|reviewing|testing|helping|providing|generating|expert|specialist|assistant|agent|general|worker|use|it|an)$' \
+    | grep -v '^.\{1\}$' \
+    | head -3 \
+    | tr '\n' ' ' \
+    | sed 's/ *$//'
+}
+
+discover_skills() {
+  command -v npx &>/dev/null || return 0
+
+  local keywords
+  keywords=$(extract_keywords "$agent_description" "$agent_objective")
+  [[ -z "$keywords" ]] && return 0
+
+  print_step "1.5" "$MSG_SKILLS_STEP"
+  print_info "$MSG_SKILLS_SEARCHING"
+
+  local raw
+  raw=$(npx skills find "$keywords" 2>/dev/null \
+    | sed 's/\x1b\[[0-9;]*m//g' \
+    | grep -v '^$' \
+    | grep -v 'Install with')
+
+  [[ -z "$raw" ]] && { print_info "$MSG_SKILLS_NONE"; return 0; }
+
+  # Parse skill refs and URLs from output
+  local -a skill_refs=() skill_urls=()
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[a-zA-Z] ]] && [[ "$line" == *@* ]] && [[ "$line" == *installs* ]]; then
+      skill_refs+=("${line%%[[:space:]]*}|$(echo "$line" | grep -oE '[0-9.]+K?[[:space:]]+installs')")
+    elif [[ "$line" == *https://skills.sh/* ]]; then
+      skill_urls+=("${line#*https://}")
+      skill_urls[-1]="https://${skill_urls[-1]}"
+    fi
+  done <<< "$raw"
+
+  [[ ${#skill_refs[@]} -eq 0 ]] && { print_info "$MSG_SKILLS_NONE"; return 0; }
+
+  echo ""
+  echo -e "${GREEN}${BOLD}${MSG_SKILLS_FOUND}${RESET}"
+  local max=$(( ${#skill_refs[@]} < 3 ? ${#skill_refs[@]} : 3 ))
+  for (( i=0; i<max; i++ )); do
+    local ref="${skill_refs[$i]%%|*}"
+    local installs="${skill_refs[$i]#*|}"
+    echo -e "  ${CYAN}$((i+1))${RESET}) ${BOLD}${ref}${RESET}  ${DIM}${installs}${RESET}"
+    [[ -n "${skill_urls[$i]:-}" ]] && echo -e "     ${DIM}${skill_urls[$i]}${RESET}"
+  done
+
+  echo ""
+  echo -e "${YELLOW}${MSG_SKILLS_ENRICH}${RESET}"
+  echo -ne "${BOLD}${MSG_SKILLS_PROMPT} ${RESET}"
+  read -r skill_choice
+
+  agent_installed_skill=""
+  if [[ "$skill_choice" =~ ^[1-3]$ ]] && (( skill_choice <= max )); then
+    local chosen="${skill_refs[$((skill_choice-1))]%%|*}"
+    echo ""
+    print_info "${MSG_SKILLS_INSTALLING} ${chosen}"
+    if npx skills add "$chosen" -g -y 2>&1 | tail -3; then
+      print_success "$MSG_SKILLS_DONE"
+      agent_installed_skill="$chosen"
+    else
+      print_warning "$MSG_SKILLS_MANUAL"
+      echo "  npx skills add ${chosen} -g -y"
+    fi
   fi
 }
 
@@ -613,6 +710,16 @@ Make sure the corresponding MCP servers are configured in your environment."
 
     fi  # end LANG_CODE
 
+    # Optional: installed skill reference
+    if [[ -n "${agent_installed_skill:-}" ]]; then
+      echo ""
+      echo "$MSG_SKILLS_REF_TITLE"
+      echo ""
+      echo "$MSG_SKILLS_REF_BODY"
+      echo ""
+      echo "- \`${agent_installed_skill}\` — install: \`npx skills add ${agent_installed_skill} -g -y\`"
+    fi
+
     echo ""
     echo "---"
     echo ""
@@ -683,6 +790,7 @@ main() {
   agent_constraints=""
   output_filename=""
   auto_place=false
+  agent_installed_skill=""
 
   print_header
   select_language
@@ -703,6 +811,10 @@ main() {
 
   echo ""
   ask agent_objective "$MSG_AGENT_OBJ"
+
+  # ── Skill Discovery (between identity and model) ─────────────────────────────
+  echo ""
+  discover_skills
 
   echo ""
   ask_choice_with_desc agent_role "$MSG_AGENT_ROLE" \
