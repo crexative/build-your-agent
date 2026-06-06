@@ -225,7 +225,13 @@ load_strings() {
     MSG_OUTPUT_FILE="¿Cómo llamar el archivo? (sin extensión):"
     MSG_OUTPUT_FILE_TIP="Será el nombre del archivo .md de tu agente"
     MSG_AUTO_PLACE="¿Auto-colocar en .claude/agents/ del directorio actual?"
-    MSG_AUTO_PLACE_TIP="Recomendado: di sí para que Claude Code detecte tu agente automáticamente con /agent ${output_filename}"
+    MSG_AUTO_PLACE_TIP="Recomendado: di sí para que Claude Code detecte tu agente automáticamente con /${output_filename}"
+    MSG_PLACE_WHERE="¿Dónde instalar el agente?"
+    MSG_PLACE_GLOBAL="Global|~/.claude/agents/ — disponible en TODOS tus proyectos (recomendado)"
+    MSG_PLACE_PROJECT="Proyecto|.claude/agents/ — solo en el directorio actual"
+    MSG_PLACE_NONE="No instalar|guardar el archivo aquí y moverlo manualmente"
+    MSG_PLACE_CURSOR_TIP="Ejecuta este script desde el directorio de tu proyecto para que Cursor lo detecte"
+    MSG_PLACE_WINDSURF_TIP="Ejecuta este script desde el directorio de tu proyecto para que Windsurf lo detecte"
     MSG_GENERATING="Generando tu agente..."
     MSG_GENERATED="¡Agente creado exitosamente!"
     MSG_INSTALL_PROMPT="¿Ejecutar el script de instalación de la plataforma ahora?"
@@ -234,7 +240,7 @@ load_strings() {
     MSG_STEP1="1. Revisa y personaliza el archivo generado"
     MSG_STEP2="2. Ajusta el prompt del sistema a tu caso de uso específico"
     MSG_STEP3="3. Mueve el archivo a la ubicación indicada arriba"
-    MSG_STEP4="4. Usa /agent ${agent_name} en Claude Code para activarlo"
+    MSG_STEP4="4. Usa /${agent_name} en Claude Code para activarlo"
     MSG_THANKS="¡Gracias por usar Build Your Agent!"
     ROLE_OPT_ORCH="Orquestador|Coordina múltiples agentes, delega subtareas, sintetiza resultados"
     ROLE_OPT_WORK="Trabajador|Ejecuta tareas específicas, llamado por orquestadores"
@@ -315,7 +321,13 @@ load_strings() {
     MSG_OUTPUT_FILE="What to name the file? (no extension):"
     MSG_OUTPUT_FILE_TIP="This will be the filename for your agent's .md file"
     MSG_AUTO_PLACE="Auto-place in .claude/agents/ of current directory?"
-    MSG_AUTO_PLACE_TIP="Recommended: say yes so Claude Code detects your agent automatically with /agent ${output_filename}"
+    MSG_AUTO_PLACE_TIP="Recommended: say yes so Claude Code detects your agent automatically with /${output_filename}"
+    MSG_PLACE_WHERE="Where do you want to install the agent?"
+    MSG_PLACE_GLOBAL="Global|~/.claude/agents/ — available in ALL your projects (recommended)"
+    MSG_PLACE_PROJECT="Project|.claude/agents/ — only in the current directory"
+    MSG_PLACE_NONE="Don't install|save the file here and move it manually"
+    MSG_PLACE_CURSOR_TIP="Run this script from your project directory so Cursor detects it automatically"
+    MSG_PLACE_WINDSURF_TIP="Run this script from your project directory so Windsurf detects it automatically"
     MSG_GENERATING="Generating your agent..."
     MSG_GENERATED="Agent created successfully!"
     MSG_INSTALL_PROMPT="Run the platform install script now?"
@@ -324,7 +336,7 @@ load_strings() {
     MSG_STEP1="1. Review and customize the generated file"
     MSG_STEP2="2. Refine the system prompt for your specific use case"
     MSG_STEP3="3. Move the file to the location shown above"
-    MSG_STEP4="4. Use /agent ${agent_name} in Claude Code to activate it"
+    MSG_STEP4="4. Use /${agent_name} in Claude Code to activate it"
     MSG_THANKS="Thanks for using Build Your Agent!"
     ROLE_OPT_ORCH="Orchestrator|Coordinates multiple agents, delegates subtasks, synthesizes results"
     ROLE_OPT_WORK="Worker|Executes specific tasks, called by orchestrators"
@@ -513,8 +525,8 @@ get_platform_note() {
   case "$agent_platform" in
     "Claude Code")
       [[ "$LANG_CODE" == "es" ]] \
-        && echo "Guarda como \`.claude/agents/${output_filename}.md\`. Actívalo con \`/agent ${output_filename}\` en Claude Code." \
-        || echo "Save as \`.claude/agents/${output_filename}.md\`. Activate with \`/agent ${output_filename}\` in Claude Code." ;;
+        && echo "Guarda como \`.claude/agents/${output_filename}.md\`. Actívalo con \`/${output_filename}\` en Claude Code." \
+        || echo "Save as \`.claude/agents/${output_filename}.md\`. Activate with \`/${output_filename}\` in Claude Code." ;;
     "Cursor")
       [[ "$LANG_CODE" == "es" ]] \
         && echo "Guarda en \`.cursor/rules/${output_filename}.md\` o referéncialo en \`.cursorrules\`." \
@@ -593,18 +605,23 @@ generate_agent_file() {
   local output_path
   if [[ "$agent_platform" == "OpenAI Codex" ]] && [[ "$codex_agents_md" == true ]]; then
     output_path="AGENTS.md"
-  elif [[ "$agent_platform" == "Devin" ]] && [[ "$devin_playbook" == true ]] && [[ "$auto_place" == true ]]; then
-    mkdir -p ".devin/playbooks"
-    output_path=".devin/playbooks/${output_filename}.md"
-  elif [[ "$agent_platform" == "Cursor" ]] && [[ "$auto_place" == true ]]; then
-    mkdir -p ".cursor/rules"
-    output_path=".cursor/rules/${output_filename}.md"
-  elif [[ "$agent_platform" == "Windsurf" ]] && [[ "$auto_place" == true ]]; then
-    mkdir -p ".windsurf/rules"
-    output_path=".windsurf/rules/${output_filename}.md"
-  elif [[ "$agent_platform" == "Claude Code" ]] && [[ "$auto_place" == true ]]; then
-    mkdir -p ".claude/agents"
-    output_path=".claude/agents/${output_filename}.md"
+  elif [[ "$auto_place" == true ]]; then
+    local _dir
+    case "$agent_platform" in
+      "Claude Code")
+        [[ "$auto_place_global" == true ]] && _dir="${HOME}/.claude/agents" || _dir=".claude/agents" ;;
+      "Cursor")
+        [[ "$auto_place_global" == true ]] && _dir="${HOME}/.cursor/rules" || _dir=".cursor/rules" ;;
+      "Windsurf")
+        [[ "$auto_place_global" == true ]] && _dir="${HOME}/.windsurf/rules" || _dir=".windsurf/rules" ;;
+      "Devin")
+        _dir=".devin/playbooks" ;;
+      "Gemini CLI")
+        [[ "$auto_place_global" == true ]] && _dir="${HOME}/.gemini" || _dir="." ;;
+      *) _dir="." ;;
+    esac
+    mkdir -p "$_dir"
+    [[ "$_dir" == "." ]] && output_path="${output_filename}.md" || output_path="${_dir}/${output_filename}.md"
   else
     output_path="${output_filename}.md"
   fi
@@ -1205,9 +1222,15 @@ run_install() {
 get_activation_step() {
   case "$agent_platform" in
     "Claude Code")
-      [[ "$LANG_CODE" == "es" ]] \
-        && echo "4. Escribe \`/agent ${output_filename}\` en Claude Code para activarlo" \
-        || echo "4. Type \`/agent ${output_filename}\` in Claude Code to activate it" ;;
+      if [[ "$auto_place_global" == true ]]; then
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "4. Escribe \`/${output_filename}\` en cualquier proyecto de Claude Code" \
+          || echo "4. Type \`/${output_filename}\` in any Claude Code project"
+      else
+        [[ "$LANG_CODE" == "es" ]] \
+          && echo "4. Escribe \`/${output_filename}\` en Claude Code (en este directorio)" \
+          || echo "4. Type \`/${output_filename}\` in Claude Code (in this directory)"
+      fi ;;
     "Cursor")
       [[ "$LANG_CODE" == "es" ]] \
         && echo "4. El archivo \`.cursor/rules/${output_filename}.md\` se aplica automáticamente en Cursor" \
@@ -1272,6 +1295,7 @@ main() {
   agent_constraints=""
   output_filename=""
   auto_place=false
+  auto_place_global=false
   agent_installed_skill=""
   cursor_always_apply=false
   cursor_globs=""
@@ -1376,48 +1400,56 @@ main() {
   output_filename=$(echo "$output_filename" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-_')
   [[ -z "$output_filename" ]] && output_filename="$agent_name"
 
-  # Auto-place: platforms with a standard directory
-  local _autoplace_path="" _autoplace_tip=""
+  # Auto-place: offer global + project options per platform
+  local _global_path="" _project_path=""
   case "$agent_platform" in
     "Claude Code")
-      _autoplace_path=".claude/agents/${output_filename}.md"
-      if [[ "$LANG_CODE" == "es" ]]; then
-        _autoplace_tip="Recomendado: di sí para usar /agent ${output_filename} en Claude Code"
-      else
-        _autoplace_tip="Recommended: say yes to use /agent ${output_filename} in Claude Code"
-      fi ;;
+      _global_path="${HOME}/.claude/agents/${output_filename}.md"
+      _project_path=".claude/agents/${output_filename}.md" ;;
     "Cursor")
-      _autoplace_path=".cursor/rules/${output_filename}.md"
-      if [[ "$LANG_CODE" == "es" ]]; then
-        _autoplace_tip="Recomendado: di sí para que Cursor aplique la regla automáticamente"
-      else
-        _autoplace_tip="Recommended: say yes so Cursor applies the rule automatically"
-      fi ;;
+      _global_path="${HOME}/.cursor/rules/${output_filename}.md"
+      _project_path=".cursor/rules/${output_filename}.md" ;;
     "Windsurf")
-      _autoplace_path=".windsurf/rules/${output_filename}.md"
-      if [[ "$LANG_CODE" == "es" ]]; then
-        _autoplace_tip="Recomendado: di sí para que Windsurf detecte la regla automáticamente"
-      else
-        _autoplace_tip="Recommended: say yes so Windsurf detects the rule automatically"
-      fi ;;
+      _global_path="${HOME}/.windsurf/rules/${output_filename}.md"
+      _project_path=".windsurf/rules/${output_filename}.md" ;;
     "Devin")
       if [[ "$devin_playbook" == true ]]; then
-        _autoplace_path=".devin/playbooks/${output_filename}.md"
-        if [[ "$LANG_CODE" == "es" ]]; then
-          _autoplace_tip="Recomendado: di sí para guardar el playbook donde Devin lo detecta"
-        else
-          _autoplace_tip="Recommended: say yes to save the playbook where Devin detects it"
-        fi
+        _project_path=".devin/playbooks/${output_filename}.md"
       fi ;;
+    "Gemini CLI")
+      _global_path="${HOME}/.gemini/${output_filename}.md"
+      _project_path="${output_filename}.md" ;;
   esac
 
-  if [[ -n "$_autoplace_path" ]]; then
+  if [[ -n "$_global_path" || -n "$_project_path" ]]; then
     echo ""
-    print_info "$_autoplace_path"
-    print_info "$_autoplace_tip"
-    if confirm_yes "$MSG_AUTO_PLACE"; then
-      auto_place=true
+    local _place_choice
+    if [[ -n "$_global_path" && -n "$_project_path" ]]; then
+      ask_choice_with_desc _place_choice "$MSG_PLACE_WHERE" \
+        "$MSG_PLACE_GLOBAL" \
+        "$MSG_PLACE_PROJECT" \
+        "$MSG_PLACE_NONE"
+    elif [[ -n "$_project_path" ]]; then
+      # Devin playbook: project-only
+      print_info "$_project_path"
+      if confirm_yes "$MSG_AUTO_PLACE"; then
+        _place_choice="Project"
+      else
+        _place_choice="Don't install"
+      fi
     fi
+
+    case "$_place_choice" in
+      "Global"|"Global")
+        auto_place=true
+        auto_place_global=true ;;
+      "Proyecto"|"Project")
+        auto_place=true
+        auto_place_global=false ;;
+      *)
+        auto_place=false
+        auto_place_global=false ;;
+    esac
   fi
 
   # ── Generate ────────────────────────────────────────────────────────────────
