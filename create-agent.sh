@@ -618,6 +618,28 @@ gather_platform_config() {
   esac
 }
 
+# ─── Preview ──────────────────────────────────────────────────────────────────
+show_preview() {
+  local file="$1"
+  local lines
+  lines=$(wc -l < "$file")
+  echo ""
+  echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
+  if [[ "$LANG_CODE" == "es" ]]; then
+    echo -e "${BOLD}  Vista previa del agente (${lines} líneas)${RESET}"
+  else
+    echo -e "${BOLD}  Agent preview (${lines} lines)${RESET}"
+  fi
+  echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
+  echo ""
+  while IFS= read -r line; do
+    echo -e "  ${DIM}${line}${RESET}"
+  done < "$file"
+  echo ""
+  echo -e "${CYAN}${BOLD}──────────────────────────────────────────────────────${RESET}"
+  echo ""
+}
+
 # ─── Generate Agent File ───────────────────────────────────────────────────────
 generate_agent_file() {
   get_role_defaults "$agent_role"
@@ -640,7 +662,6 @@ generate_agent_file() {
         [[ "$auto_place_global" == true ]] && _dir="${HOME}/.gemini" || _dir="." ;;
       *) _dir="." ;;
     esac
-    mkdir -p "$_dir"
     [[ "$_dir" == "." ]] && output_path="${output_filename}.md" || output_path="${_dir}/${output_filename}.md"
   else
     output_path="${output_filename}.md"
@@ -680,16 +701,10 @@ Make sure the corresponding MCP servers are configured in your environment."
     fi
   fi
 
-  # ── Overwrite guard ────────────────────────────────────────────────────────
-  if [[ -f "$output_path" ]]; then
-    print_warning "File already exists: $output_path"
-    if ! confirm_yes "Overwrite?"; then
-      print_info "Aborted."
-      return 1
-    fi
-  fi
+  # ── Write to temp file for preview ────────────────────────────────────────
+  local tmpfile
+  tmpfile=$(mktemp /tmp/bya-agent-XXXXXX.md)
 
-  # ── Write the file ─────────────────────────────────────────────────────────
   {
     if [[ "$agent_platform" == "Claude Code" ]]; then
       # Frontmatter (official Claude Code format)
@@ -1216,7 +1231,45 @@ Make sure the corresponding MCP servers are configured in your environment."
     echo ""
     echo "*Generated with [Build Your Agent](https://github.com/crexative/build-your-agent)*"
 
-  } > "$output_path"
+  } > "$tmpfile"
+
+  # ── Preview + confirm ──────────────────────────────────────────────────────
+  show_preview "$tmpfile"
+
+  local confirm_msg
+  if [[ "$LANG_CODE" == "es" ]]; then
+    confirm_msg="¿Guardar este agente en ${output_path}?"
+  else
+    confirm_msg="Save this agent to ${output_path}?"
+  fi
+
+  if ! confirm_yes "$confirm_msg"; then
+    rm -f "$tmpfile"
+    if [[ "$LANG_CODE" == "es" ]]; then
+      print_info "Cancelado. Ejecuta el script de nuevo para ajustar las respuestas."
+    else
+      print_info "Cancelled. Run the script again to adjust your answers."
+    fi
+    return 1
+  fi
+
+  # ── Overwrite guard ────────────────────────────────────────────────────────
+  if [[ -f "$output_path" ]]; then
+    if [[ "$LANG_CODE" == "es" ]]; then
+      print_warning "El archivo ya existe: $output_path"
+    else
+      print_warning "File already exists: $output_path"
+    fi
+    if ! confirm_yes "${MSG_OVERWRITE:-Overwrite?}"; then
+      rm -f "$tmpfile"
+      print_info "Aborted."
+      return 1
+    fi
+  fi
+
+  # ── Write to final path ────────────────────────────────────────────────────
+  mkdir -p "$(dirname "$output_path")"
+  mv "$tmpfile" "$output_path"
 
   print_success "$MSG_GENERATED"
   echo ""
