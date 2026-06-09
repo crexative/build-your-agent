@@ -80,6 +80,13 @@ Type "1"
 Enter
 Sleep 2s
 
+# ── Preview appears — read it, then confirm ───────────────────────────────────
+Sleep 4s
+
+# Confirm → Yes (Enter = default Y)
+Enter
+Sleep 1s
+
 # Install platform script → No (Enter = default N)
 Enter
 Sleep 5s
